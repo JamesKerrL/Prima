@@ -40,6 +40,7 @@ Dependencies point downward only. The engine never calls up; the UI never reache
 - The engine gets C++ unit tests via GoogleTest; the application layer gets .NET unit tests via xUnit.
 - Headless-first design exists partly to enable this: integration tests exercise the full app layer + engine stack without any UI.
 - Tests must be fast and runnable with a single command. Every change lands with tests.
+- **Pixel algorithms (brush, fill, and future tools) get visual PNG tests, not just numeric assertions.** Numeric unit tests catch regressions in known values but don't show whether output actually *looks* right. Add `DISABLED_Visual*` GoogleTest cases (see `tests/engine/brush_engine_test.cpp`) that render a representative operation to a PNG via `saveImagePng` for human inspection; run them explicitly with `--gtest_also_run_disabled_tests --gtest_filter="*Visual*"`. When simulating input-driven tools (brush strokes, etc.), model realistic fast-input conditions (few, widely-spaced raw samples) as well as slow/dense ones — sparse input exercises different code paths (e.g. interpolation/smoothing) than densely-sampled input and can hide bugs the dense case never reaches.
 
 ## Working conventions (parallel agents)
 
@@ -60,7 +61,7 @@ Multiple agents work on this codebase concurrently. To keep that safe:
 - **C++ toolchain (this machine)** — MinGW-w64 (WinLibs GCC, UCRT). `prima_c.dll` links the runtimes statically (`-static`), so it depends only on system/UCRT DLLs.
 - **Interop mechanism** — opaque `PrimaCanvas*` handle across a `extern "C"` ABI; C# uses `LibraryImport` (source-generated P/Invoke). Pixels shared via `prima_canvas_pixels` (pointer into the engine's own buffer), never copied across the boundary.
 - **Render backend** — the engine owns rendering behind an abstract `Renderer` (`engine/include/prima/renderer.h`); backends are pluggable. Backend #1 is `SoftwareRenderer` (CPU, headless-testable). A `Viewport` (pan/zoom) maps target→canvas in the engine. The UI presents by rendering into its own bitmap buffer (zero-copy target). GPU backends slot in behind the same interface later — OpenGL (Avalonia `OpenGlControlBase`) first, then Vulkan/Metal via composition-surface texture interop.
-- **Brush engine** — stateful `BrushEngine` (engine-side) with `beginStroke/addSamples/endStroke` behind its own interop handle `PrimaBrushEngine`. Stroke model: linear interpolation, analytic AA (smoothstep distance falloff), 16-bit per-stroke coverage buffer composited against a begin-stroke canvas snapshot (prevents self-overlap darkening). Flow builds up (airbrush), opacity caps the stroke. Engine algorithm units are pure and isolated: `DabEmitter` (pixel-free spacing walk, batching-invariant), `RoundDabSource` (coverage stamp), pure math kernels in `brush_math.h`. The hot path is allocation-free; scratch buffers are pooled per-`BrushEngine`.
+- **Brush engine** — stateful `BrushEngine` (engine-side) with `beginStroke/addSamples/endStroke` behind its own interop handle `PrimaBrushEngine`. Stroke model: Catmull-Rom curve fit through raw input samples (each pending segment `[p1,p2]` is finalized once the next sample supplies `p3` as its tangent neighbor, with duplicated end caps at stroke start/end), subdivided into micro-segments walked by the original linear spacing logic — this keeps dab placement/spacing math untouched while fixing corner-chording on fast strokes with sparse raw samples. Analytic AA (smoothstep distance falloff), 16-bit per-stroke coverage buffer composited against a begin-stroke canvas snapshot (prevents self-overlap darkening). Flow builds up (airbrush), opacity caps the stroke. Engine algorithm units are pure and isolated: `DabEmitter` (pixel-free spacing walk, batching-invariant), `RoundDabSource` (coverage stamp), pure math kernels in `brush_math.h` (including `catmullRom`). The hot path is allocation-free; scratch buffers are pooled per-`BrushEngine`.
 - **Version control** — git, initialized. Enables worktree-based parallel agent work.
 
 ## Open decisions
@@ -99,8 +100,11 @@ Milestone 1 brush engine is complete end to end. The parametric round brush
 pressure→size/flow + dirty rects) ships across all layers: C++ engine tests,
 interop ABI (5 functions), C# `BrushEngine` wrapper, xUnit app-layer tests, CLI
 headless demo, and UI wiring (pointer capture, `GetIntermediatePoints`, pen
-pressure, dirty-rect partial bitmap render). Catmull-Rom smoothing,
-tilt/rotation/speed dynamics, stamp/image brushes, GPU dab rendering, and the
-tiled canvas baseline copy-on-write are deferred and explicitly designed for.
+pressure, dirty-rect partial bitmap render). `DabEmitter` Catmull-Rom-fits a
+curve through raw input samples so fast strokes with sparse, widely-spaced
+samples round off direction changes smoothly instead of chording into sharp
+corners. Tilt/rotation/speed dynamics, stamp/image brushes, GPU dab rendering,
+and the tiled canvas baseline copy-on-write are deferred and explicitly
+designed for.
 
 See [ROADMAP.md](ROADMAP.md) for planned features and what's next.

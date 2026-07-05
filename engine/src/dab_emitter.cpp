@@ -13,6 +13,7 @@ void DabEmitter::begin(const BrushParams& params) {
     lastY_ = 0.f;
     lastPressure_ = 1.f;
     distanceToNextDab_ = 0.f;
+    hasPending_ = false;
 }
 
 DabPoint DabEmitter::resolveDab(float x, float y, float pressure) const {
@@ -80,6 +81,29 @@ void DabEmitter::walkSegment(float bx, float by, float bp,
     lastPressure_ = bp;
 }
 
+void DabEmitter::emitCurveSegment(const RawPoint& p0, const RawPoint& p1,
+                                  const RawPoint& p2, const RawPoint& p3,
+                                  const std::function<void(const DabPoint&)>& out) {
+    if (p1.x == p2.x && p1.y == p2.y) {
+        // Degenerate zero-length pending segment (duplicate consecutive raw
+        // samples): nothing to walk. Adopt p2's pressure at the current point,
+        // same as walkSegment's own zero-length skip.
+        lastX_ = p2.x;
+        lastY_ = p2.y;
+        lastPressure_ = p2.pressure;
+        return;
+    }
+    for (int i = 1; i <= kCurveSubdivisions; ++i) {
+        float t = static_cast<float>(i) / static_cast<float>(kCurveSubdivisions);
+        float x = catmullRom(p0.x, p1.x, p2.x, p3.x, t);
+        float y = catmullRom(p0.y, p1.y, p2.y, p3.y, t);
+        float pr = std::clamp(
+            catmullRom(p0.pressure, p1.pressure, p2.pressure, p3.pressure, t),
+            0.f, 1.f);
+        walkSegment(x, y, pr, out);
+    }
+}
+
 void DabEmitter::addSamplesImpl(const InputSample* samples, int count,
                                 const std::function<void(const DabPoint&)>& out) {
     if (samples == nullptr || count <= 0) return;
@@ -99,7 +123,23 @@ void DabEmitter::addSamplesImpl(const InputSample* samples, int count,
 
     for (int i = start; i < count; ++i) {
         const InputSample& s = samples[i];
-        walkSegment(s.x, s.y, s.pressure, out);
+        RawPoint cur{s.x, s.y, s.pressure};
+        if (!hasPending_) {
+            // Second raw sample of the stroke: opens the first pending
+            // segment [p1_, p2_], with p0_ duplicating p1_ since no real
+            // point exists before the pen-down sample.
+            p1_ = RawPoint{lastX_, lastY_, lastPressure_};
+            p0_ = p1_;
+            p2_ = cur;
+            hasPending_ = true;
+        } else {
+            // cur supplies p3, the tangent neighbor that lets the pending
+            // segment [p1_, p2_] be curve-fit and walked now.
+            emitCurveSegment(p0_, p1_, p2_, cur, out);
+            p0_ = p1_;
+            p1_ = p2_;
+            p2_ = cur;
+        }
     }
 }
 
@@ -115,6 +155,13 @@ void DabEmitter::endImpl(const std::function<void(const DabPoint&)>& out) {
     // followed by end(), which already stamped its pen-down dab.
     if (hasLast_ && !strokeStarted_) {
         emitDab(lastX_, lastY_, lastPressure_, out);
+    }
+
+    if (hasPending_) {
+        // Finalize the final pending segment with a duplicated end tangent —
+        // no real point exists after the last raw sample.
+        emitCurveSegment(p0_, p1_, p2_, p2_, out);
+        hasPending_ = false;
     }
 }
 
