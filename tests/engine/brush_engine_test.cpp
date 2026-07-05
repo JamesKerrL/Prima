@@ -438,12 +438,15 @@ TEST(BrushEngineTest, DISABLED_VisualSimpleDiagonalStroke) {
     p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
-    // Diagonal stroke from top-left to bottom-right
-    for (int i = 0; i <= 20; ++i) {
-        float t = i / 20.0f;
-        InputSample s{20.0f + t * 160.0f, 20.0f + t * 160.0f, 1.0f};
-        engine.addSamples(&s, 1);
-    }
+    // Diagonal stroke from top-left to bottom-right. Only two raw samples —
+    // pen-down and pen-up — to mimic a fast mouse swipe where the OS/UI
+    // delivers few, widely-spaced pointer events. All intermediate dabs come
+    // from DabEmitter's own spacing-walk interpolation over the long segment,
+    // which is exactly what happens on a quick real stroke.
+    InputSample start{20.0f, 20.0f, 1.0f};
+    InputSample end{180.0f, 180.0f, 1.0f};
+    engine.addSamples(&start, 1);
+    engine.addSamples(&end, 1);
     engine.endStroke();
 
     saveCanvasToPng(canvas, "brush_diagonal_stroke.png");
@@ -464,12 +467,12 @@ TEST(BrushEngineTest, DISABLED_VisualHorizontalStroke) {
     p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
-    // Horizontal stroke from left to right
-    for (int i = 0; i <= 20; ++i) {
-        float t = i / 20.0f;
-        InputSample s{20.0f + t * 160.0f, 100.0f, 1.0f};
-        engine.addSamples(&s, 1);
-    }
+    // Horizontal stroke from left to right. Only two raw samples (fast swipe);
+    // see comment in VisualSimpleDiagonalStroke above.
+    InputSample start{20.0f, 100.0f, 1.0f};
+    InputSample end{180.0f, 100.0f, 1.0f};
+    engine.addSamples(&start, 1);
+    engine.addSamples(&end, 1);
     engine.endStroke();
 
     saveCanvasToPng(canvas, "brush_horizontal_stroke.png");
@@ -490,9 +493,13 @@ TEST(BrushEngineTest, DISABLED_VisualSmoothCurvedStroke) {
     p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
-    // Sine curve stroke
-    for (int i = 0; i <= 40; ++i) {
-        float t = i / 40.0f;
+    // Sine curve stroke, sampled sparsely (5 raw points instead of 40) to
+    // mimic a fast mouse swipe along a curve. DabEmitter Catmull-Rom-fits a
+    // curve through each raw sample using its neighbors for tangents, so
+    // direction changes round off smoothly instead of chording into straight
+    // segments between the few points the OS actually delivered.
+    for (int i = 0; i <= 4; ++i) {
+        float t = i / 4.0f;
         float x = 30.0f + t * 140.0f;
         float y = 100.0f + 30.0f * std::sin(t * 3.14159f * 2.0f);
         InputSample s{x, y, 1.0f};
@@ -501,6 +508,37 @@ TEST(BrushEngineTest, DISABLED_VisualSmoothCurvedStroke) {
     engine.endStroke();
 
     saveCanvasToPng(canvas, "brush_curved_stroke.png");
+    SUCCEED();
+}
+
+TEST(BrushEngineTest, DISABLED_VisualFastZigzagStroke) {
+    Canvas canvas(200, 200);
+    canvas.clear(Rgba{255, 255, 255, 255});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 4;  // thin brush so path smoothing is visible, not swallowed
+                   // by the dab's own circular footprint
+    p.hardness = 0.7f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{0, 0, 0, 255};
+    p.spacing = 0.1f;
+
+    engine.beginStroke(canvas, p);
+    // A sharp V-shaped zigzag from just 3 raw samples — the most extreme case
+    // of a fast stroke through an abrupt direction change. With Catmull-Rom
+    // smoothing, the middle vertex should round off into a curve instead of
+    // a sharp mitered corner.
+    InputSample p1{30.0f, 150.0f, 1.0f};
+    InputSample p2{100.0f, 50.0f, 1.0f};
+    InputSample p3{170.0f, 150.0f, 1.0f};
+    engine.addSamples(&p1, 1);
+    engine.addSamples(&p2, 1);
+    engine.addSamples(&p3, 1);
+    engine.endStroke();
+
+    saveCanvasToPng(canvas, "brush_zigzag_stroke.png");
     SUCCEED();
 }
 
@@ -518,12 +556,12 @@ TEST(BrushEngineTest, DISABLED_VisualHardBrush) {
     p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
-    // Horizontal stroke
-    for (int i = 0; i <= 20; ++i) {
-        float t = i / 20.0f;
-        InputSample s{20.0f + t * 160.0f, 100.0f, 1.0f};
-        engine.addSamples(&s, 1);
-    }
+    // Horizontal stroke. Only two raw samples (fast swipe); see comment in
+    // VisualSimpleDiagonalStroke above.
+    InputSample start{20.0f, 100.0f, 1.0f};
+    InputSample end{180.0f, 100.0f, 1.0f};
+    engine.addSamples(&start, 1);
+    engine.addSamples(&end, 1);
     engine.endStroke();
 
     saveCanvasToPng(canvas, "brush_hard_edge.png");

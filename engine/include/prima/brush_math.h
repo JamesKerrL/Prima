@@ -42,6 +42,20 @@ inline float dabCoverage(float d, float radius, float hardness) {
     return std::clamp(cov, 0.f, 1.f);
 }
 
+// Uniform Catmull-Rom spline: position at parameter t in [0,1] along the
+// segment between p1 and p2, using p0 and p3 as the neighboring control
+// points that shape the tangents at p1 and p2. Passes through p1 exactly at
+// t=0 and p2 exactly at t=1. Applied independently per-dimension (x, y,
+// pressure all use the same t and their own 4 control values).
+inline float catmullRom(float p0, float p1, float p2, float p3, float t) {
+    float t2 = t * t;
+    float t3 = t2 * t;
+    return 0.5f * ((2.f * p1) +
+                   (-p0 + p2) * t +
+                   (2.f * p0 - 5.f * p1 + 4.f * p2 - p3) * t2 +
+                   (-p0 + 3.f * p1 - 3.f * p2 + p3) * t3);
+}
+
 // Saturating flow-weighted accumulation into a 16-bit fixed-point wet buffer
 // where 65535 represents 1.0. Never decreases below the input c.
 inline uint16_t accumulateCoverage(uint16_t c, float flow, float cov) {

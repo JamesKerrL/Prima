@@ -69,6 +69,16 @@ public:
     }
 
 private:
+    // A raw input point reduced to the (x, y, pressure) fields the Catmull-Rom
+    // window needs (tilt/rotation/time aren't part of the curve fit).
+    struct RawPoint { float x = 0.f, y = 0.f, pressure = 1.f; };
+
+    // Number of straight micro-segments used to approximate one Catmull-Rom
+    // curve between two consecutive raw samples. Each micro-segment is fed
+    // through the existing linear walkSegment, so this only controls
+    // geometric smoothness, not the spacing/dab math itself.
+    static constexpr int kCurveSubdivisions = 32;
+
     // Resolve pressure -> (radius, flow) at one interpolated point.
     DabPoint resolveDab(float x, float y, float pressure) const;
 
@@ -77,11 +87,23 @@ private:
     void emitDab(float x, float y, float pressure,
                  const std::function<void(const DabPoint&)>& out);
 
-    // Walk one segment from the stored last point to (bx, by, bp), emitting dabs
-    // and carrying leftover distance. Updates the stored last point to the
-    // segment end regardless of whether any dab landed.
+    // Walk one straight micro-segment from the stored last point to
+    // (bx, by, bp), emitting dabs and carrying leftover distance. Updates the
+    // stored last point to the segment end regardless of whether any dab
+    // landed. This is the only place spacing/distance math happens; curve
+    // fitting just controls what points get fed into it.
     void walkSegment(float bx, float by, float bp,
                      const std::function<void(const DabPoint&)>& out);
+
+    // Finalizes the pending segment [p1, p2] as a Catmull-Rom curve shaped by
+    // neighbors p0 (before p1) and p3 (after p2), subdividing it into micro-
+    // segments and walking each one. p0==p1 or p3==p2 represent a duplicated
+    // end cap (no real neighbor exists yet), which is how stroke start/end are
+    // handled. A p1==p2 duplicate (zero-length pending segment) is skipped,
+    // matching walkSegment's existing degenerate-segment handling.
+    void emitCurveSegment(const RawPoint& p0, const RawPoint& p1,
+                          const RawPoint& p2, const RawPoint& p3,
+                          const std::function<void(const DabPoint&)>& out);
 
     void addSamplesImpl(const InputSample* samples, int count,
                         const std::function<void(const DabPoint&)>& out);
@@ -94,6 +116,13 @@ private:
     float lastY_ = 0.f;
     float lastPressure_ = 1.f;
     float distanceToNextDab_ = 0.f; // leftover distance carried across segments/calls
+
+    // Sliding window of raw samples awaiting curve finalization. A pending
+    // segment [p1_, p2_] is finalized (curve-fit and walked) once the next
+    // raw sample arrives to serve as its p3 tangent neighbor; p0_ is the
+    // point before p1_ (or a duplicate of p1_ at stroke start).
+    bool hasPending_ = false;
+    RawPoint p0_, p1_, p2_;
 };
 
 }  // namespace prima

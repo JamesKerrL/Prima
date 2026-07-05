@@ -1,5 +1,7 @@
 #include "prima/dab_emitter.h"
 
+#include <algorithm>
+#include <cmath>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -204,4 +206,49 @@ TEST(DabEmitterTest, BeginEndWithNoSamplesEmitsNothing) {
     e.end([&](const DabPoint& d) { dabs.push_back(d); });
 
     EXPECT_TRUE(dabs.empty());
+}
+
+// 7. Catmull-Rom curve smoothing at sharp direction changes.
+//
+// Fast mouse strokes deliver few, widely-spaced raw samples. Without curve
+// fitting, a direction change between samples chords into two straight
+// segments meeting at a sharp corner: the dab-to-dab turn is concentrated
+// almost entirely in one step, right at the corner sample. Catmull-Rom
+// fitting (using each sample's neighbors as tangent guides) should spread
+// that turn out gradually across several dabs instead.
+TEST(DabEmitterTest, SharpDirectionChangeCurvesGraduallyInsteadOfChording) {
+    BrushParams params;
+    params.spacing = 0.1f;  // tight spacing for a fine-grained direction trace
+
+    DabEmitter e;
+    e.begin(params);
+    std::vector<DabPoint> dabs;
+    auto sink = [&](const DabPoint& d) { dabs.push_back(d); };
+
+    // A 90-degree V: (0,10) -> (10,0) -> (20,10), apex at the middle sample.
+    InputSample s1 = makeSample(0.f, 10.f);
+    InputSample s2 = makeSample(10.f, 0.f);
+    InputSample s3 = makeSample(20.f, 10.f);
+    e.addSamples(&s1, 1, sink);
+    e.addSamples(&s2, 1, sink);
+    e.addSamples(&s3, 1, sink);
+    e.end(sink);
+
+    ASSERT_GT(dabs.size(), 4u);
+
+    float maxTurnDeg = 0.f;
+    for (std::size_t i = 1; i + 1 < dabs.size(); ++i) {
+        float ax = dabs[i].x - dabs[i - 1].x, ay = dabs[i].y - dabs[i - 1].y;
+        float bx = dabs[i + 1].x - dabs[i].x, by = dabs[i + 1].y - dabs[i].y;
+        float aLen = std::sqrt(ax * ax + ay * ay);
+        float bLen = std::sqrt(bx * bx + by * by);
+        if (aLen < 1e-4f || bLen < 1e-4f) continue;
+        float cosAngle = std::clamp((ax * bx + ay * by) / (aLen * bLen), -1.f, 1.f);
+        maxTurnDeg = std::max(maxTurnDeg, std::acos(cosAngle) * 180.f / 3.14159265f);
+    }
+
+    // The raw path's own turn at the vertex is 90 degrees. Unsmoothed
+    // chording would show that whole turn in a single dab-to-dab step;
+    // smoothing spreads it out, so no single step should come close to it.
+    EXPECT_LT(maxTurnDeg, 60.f);
 }
