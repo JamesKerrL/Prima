@@ -372,7 +372,7 @@ TEST(BrushEngineTest, DISABLED_VisualSimpleDiagonalStroke) {
     p.opacity = 1;
     p.flow = 1;
     p.color = Rgba{0, 0, 0, 255};
-    p.spacing = 0.5f;
+    p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
     // Diagonal stroke from top-left to bottom-right
@@ -398,7 +398,7 @@ TEST(BrushEngineTest, DISABLED_VisualHorizontalStroke) {
     p.opacity = 1;
     p.flow = 1;
     p.color = Rgba{0, 0, 0, 255};
-    p.spacing = 0.5f;
+    p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
     // Horizontal stroke from left to right
@@ -424,7 +424,7 @@ TEST(BrushEngineTest, DISABLED_VisualSmoothCurvedStroke) {
     p.opacity = 1;
     p.flow = 1;
     p.color = Rgba{0, 0, 0, 255};
-    p.spacing = 0.5f;
+    p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
     // Sine curve stroke
@@ -452,7 +452,7 @@ TEST(BrushEngineTest, DISABLED_VisualHardBrush) {
     p.opacity = 1;
     p.flow = 1;
     p.color = Rgba{0, 0, 0, 255};
-    p.spacing = 0.5f;
+    p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
     // Horizontal stroke
