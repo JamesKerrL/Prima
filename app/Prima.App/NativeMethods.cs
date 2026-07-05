@@ -49,4 +49,30 @@ internal static unsafe partial class NativeMethods
         nint renderer, nint canvas, byte* target, int width, int height, int stride,
         double panX, double panY, double zoom,
         byte bgR, byte bgG, byte bgB, byte bgA);
+
+    // --- Brush / stroke engine ---
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct PrimaRect
+    {
+        public int X, Y, Width, Height;
+    }
+
+    [LibraryImport(Lib)]
+    internal static partial nint prima_brush_engine_create();
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_brush_engine_destroy(nint engine);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_stroke_begin(
+        nint engine, nint canvas, BrushParams* parameters);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_stroke_add(
+        nint engine, InputSample* samples, int count, out PrimaRect outDirty);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_stroke_end(
+        nint engine, out PrimaRect outDirty);
 }

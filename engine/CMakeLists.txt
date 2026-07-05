@@ -2,6 +2,8 @@
 add_library(prima_engine STATIC
     src/canvas.cpp
     src/software_renderer.cpp
+    src/dab_emitter.cpp
+    src/brush_engine.cpp
 )
 
 target_include_directories(prima_engine PUBLIC include)

@@ -60,6 +60,7 @@ Multiple agents work on this codebase concurrently. To keep that safe:
 - **C++ toolchain (this machine)** — MinGW-w64 (WinLibs GCC, UCRT). `prima_c.dll` links the runtimes statically (`-static`), so it depends only on system/UCRT DLLs.
 - **Interop mechanism** — opaque `PrimaCanvas*` handle across a `extern "C"` ABI; C# uses `LibraryImport` (source-generated P/Invoke). Pixels shared via `prima_canvas_pixels` (pointer into the engine's own buffer), never copied across the boundary.
 - **Render backend** — the engine owns rendering behind an abstract `Renderer` (`engine/include/prima/renderer.h`); backends are pluggable. Backend #1 is `SoftwareRenderer` (CPU, headless-testable). A `Viewport` (pan/zoom) maps target→canvas in the engine. The UI presents by rendering into its own bitmap buffer (zero-copy target). GPU backends slot in behind the same interface later — OpenGL (Avalonia `OpenGlControlBase`) first, then Vulkan/Metal via composition-surface texture interop.
+- **Brush engine** — stateful `BrushEngine` (engine-side) with `beginStroke/addSamples/endStroke` behind its own interop handle `PrimaBrushEngine`. Stroke model: linear interpolation, analytic AA (smoothstep distance falloff), 16-bit per-stroke coverage buffer composited against a begin-stroke canvas snapshot (prevents self-overlap darkening). Flow builds up (airbrush), opacity caps the stroke. Engine algorithm units are pure and isolated: `DabEmitter` (pixel-free spacing walk, batching-invariant), `RoundDabSource` (coverage stamp), pure math kernels in `brush_math.h`. The hot path is allocation-free; scratch buffers are pooled per-`BrushEngine`.
 - **Version control** — git, initialized. Enables worktree-based parallel agent work.
 
 ## Open decisions
@@ -92,5 +93,14 @@ Requires: .NET 10 SDK, CMake, MinGW-w64 (gcc/g++) on PATH. The solution is `Prim
 ## Current state
 
 Milestone 0 (walking skeleton) is complete and verified end to end: create canvas → brush dab → render, exercised through the UI (mouse), the headless CLI, and tests at every layer.
+
+Milestone 1 brush engine is complete end to end. The parametric round brush
+(`DabEmitter` + analytic AA + coverage buffer with flow/opacity semantics +
+pressure→size/flow + dirty rects) ships across all layers: C++ engine tests,
+interop ABI (5 functions), C# `BrushEngine` wrapper, xUnit app-layer tests, CLI
+headless demo, and UI wiring (pointer capture, `GetIntermediatePoints`, pen
+pressure, dirty-rect partial bitmap render). Catmull-Rom smoothing,
+tilt/rotation/speed dynamics, stamp/image brushes, GPU dab rendering, and the
+tiled canvas baseline copy-on-write are deferred and explicitly designed for.
 
 See [ROADMAP.md](ROADMAP.md) for planned features and what's next.
