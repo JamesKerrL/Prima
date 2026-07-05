@@ -1,6 +1,7 @@
 # prima_engine: the pure C++ core (STL only). No UI, no interop concerns.
 add_library(prima_engine STATIC
     src/canvas.cpp
+    src/software_renderer.cpp
 )
 
 target_include_directories(prima_engine PUBLIC include)

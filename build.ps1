@@ -4,17 +4,7 @@
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 
-# Make freshly-installed tools (cmake, gcc) visible even in a stale shell.
-$env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
-            [System.Environment]::GetEnvironmentVariable('Path', 'User')
-
-Write-Host '== Native: configure (CMake / MinGW Makefiles) ==' -ForegroundColor Cyan
-cmake -S $root -B "$root\build\native" -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
-if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed' }
-
-Write-Host '== Native: build ==' -ForegroundColor Cyan
-cmake --build "$root\build\native"
-if ($LASTEXITCODE -ne 0) { throw 'CMake build failed' }
+& "$root\build-native.ps1"
 
 Write-Host '== .NET: build solution ==' -ForegroundColor Cyan
 dotnet build "$root\Prima.slnx" -c Debug

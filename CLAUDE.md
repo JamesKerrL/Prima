@@ -50,6 +50,7 @@ Multiple agents work on this codebase concurrently. To keep that safe:
 - Build and test commands must be deterministic and scriptable (document them here once scaffolding exists).
 - Keep the repo worktree-friendly: no machine-specific absolute paths in config, all generated files gitignored.
 - When a structural or architectural decision lands, update this file in the same change.
+- Active feature plans live in `docs/features/<slug>.md`; delete a plan when its feature ships and its [ROADMAP.md](ROADMAP.md) box is checked (git history retains it). `ROADMAP.md` is the backlog; `docs/features/` is only in-flight work.
 
 ## Decisions
 
@@ -58,6 +59,7 @@ Multiple agents work on this codebase concurrently. To keep that safe:
 - **.NET test framework** — xUnit.
 - **C++ toolchain (this machine)** — MinGW-w64 (WinLibs GCC, UCRT). `prima_c.dll` links the runtimes statically (`-static`), so it depends only on system/UCRT DLLs.
 - **Interop mechanism** — opaque `PrimaCanvas*` handle across a `extern "C"` ABI; C# uses `LibraryImport` (source-generated P/Invoke). Pixels shared via `prima_canvas_pixels` (pointer into the engine's own buffer), never copied across the boundary.
+- **Render backend** — the engine owns rendering behind an abstract `Renderer` (`engine/include/prima/renderer.h`); backends are pluggable. Backend #1 is `SoftwareRenderer` (CPU, headless-testable). A `Viewport` (pan/zoom) maps target→canvas in the engine. The UI presents by rendering into its own bitmap buffer (zero-copy target). GPU backends slot in behind the same interface later — OpenGL (Avalonia `OpenGlControlBase`) first, then Vulkan/Metal via composition-surface texture interop.
 - **Version control** — git, initialized. Enables worktree-based parallel agent work.
 
 ## Open decisions
@@ -89,4 +91,6 @@ Requires: .NET 10 SDK, CMake, MinGW-w64 (gcc/g++) on PATH. The solution is `Prim
 
 ## Current state
 
-Milestone 0 (walking skeleton) is complete and verified end to end: create canvas → brush dab → render, exercised through the UI (mouse), the headless CLI, and tests at every layer. Next: **Milestone 1 — drawing core** (brush engine, layers, undo/redo, pan/zoom, color) per the plan.
+Milestone 0 (walking skeleton) is complete and verified end to end: create canvas → brush dab → render, exercised through the UI (mouse), the headless CLI, and tests at every layer.
+
+See [ROADMAP.md](ROADMAP.md) for planned features and what's next.

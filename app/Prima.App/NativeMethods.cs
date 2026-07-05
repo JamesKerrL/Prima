@@ -37,4 +37,16 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Lib)]
     internal static partial byte* prima_canvas_pixels(
         nint canvas, out nuint outLen, out int outStride);
+
+    [LibraryImport(Lib)]
+    internal static partial nint prima_renderer_create_software();
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_renderer_destroy(nint renderer);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_render(
+        nint renderer, nint canvas, byte* target, int width, int height, int stride,
+        double panX, double panY, double zoom,
+        byte bgR, byte bgG, byte bgB, byte bgA);
 }

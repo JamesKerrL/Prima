@@ -21,7 +21,9 @@ cmake_install.cmake
 *.lib
 
 # IDEs / editors
-.vscode/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
 .idea/
 *.swp
 

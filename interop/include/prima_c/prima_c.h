@@ -51,6 +51,30 @@ PRIMA_C_API void prima_canvas_brush_dab(PrimaCanvas* canvas,
 PRIMA_C_API uint8_t* prima_canvas_pixels(PrimaCanvas* canvas,
                                          size_t* out_len, int* out_stride);
 
+/* --- Rendering ---------------------------------------------------------------
+ * A renderer composites a canvas into a caller-owned RGBA8 target buffer through
+ * a viewport (pan + zoom). The target may be UI-owned memory (e.g. a mapped
+ * bitmap), so no pixels are copied across the boundary. */
+
+/* Opaque handle to a render backend. */
+typedef struct PrimaRenderer PrimaRenderer;
+
+/* Create the software (CPU) render backend. Returns NULL on failure. */
+PRIMA_C_API PrimaRenderer* prima_renderer_create_software(void);
+
+/* Destroy a renderer. Safe to pass NULL. */
+PRIMA_C_API void prima_renderer_destroy(PrimaRenderer* renderer);
+
+/* Composite `canvas` into `target` (w x h, row stride in bytes) through the
+ * viewport given by pan_x/pan_y (canvas-space point at the target origin) and
+ * zoom (target pixels per canvas pixel). Target pixels mapping outside the
+ * canvas are filled with the bg_* color. */
+PRIMA_C_API void prima_render(PrimaRenderer* renderer, const PrimaCanvas* canvas,
+                              uint8_t* target, int width, int height, int stride,
+                              double pan_x, double pan_y, double zoom,
+                              uint8_t bg_r, uint8_t bg_g, uint8_t bg_b,
+                              uint8_t bg_a);
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

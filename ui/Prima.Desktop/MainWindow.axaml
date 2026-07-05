@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Prima.Desktop.Controls"
         x:Class="Prima.Desktop.MainWindow"
         Title="Prima" Width="820" Height="640"
         Background="{StaticResource PrimaBackgroundBrush}">
@@ -7,15 +8,10 @@
     <Border DockPanel.Dock="Top"
             Background="{StaticResource PrimaSurfaceBrush}"
             Padding="{StaticResource PrimaPadMedium}">
-      <TextBlock Text="Prima — drag on the canvas to paint"
+      <TextBlock Text="Prima — left-drag paints · wheel zooms · middle-drag or space+drag pans"
                  Foreground="{StaticResource PrimaTextBrush}" />
     </Border>
 
-    <Border Padding="{StaticResource PrimaPadLarge}">
-      <Image x:Name="CanvasImage"
-             Stretch="None"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
-    </Border>
+    <controls:CanvasControl x:Name="Canvas" />
   </DockPanel>
 </Window>

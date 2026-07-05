@@ -3,15 +3,22 @@
 #include <new>
 
 #include "prima/canvas.h"
+#include "prima/renderer.h"
+#include "prima/viewport.h"
 
 using prima::Canvas;
+using prima::RenderTarget;
+using prima::Renderer;
 using prima::Rgba;
+using prima::SoftwareRenderer;
+using prima::Viewport;
 
 namespace {
 Canvas* as_canvas(PrimaCanvas* c) { return reinterpret_cast<Canvas*>(c); }
 const Canvas* as_canvas(const PrimaCanvas* c) {
     return reinterpret_cast<const Canvas*>(c);
 }
+Renderer* as_renderer(PrimaRenderer* r) { return reinterpret_cast<Renderer*>(r); }
 }  // namespace
 
 extern "C" {
@@ -53,6 +60,25 @@ uint8_t* prima_canvas_pixels(PrimaCanvas* canvas, size_t* out_len,
     if (out_len) *out_len = c->byteSize();
     if (out_stride) *out_stride = c->stride();
     return c->pixels();
+}
+
+PrimaRenderer* prima_renderer_create_software(void) {
+    return reinterpret_cast<PrimaRenderer*>(new (std::nothrow) SoftwareRenderer());
+}
+
+void prima_renderer_destroy(PrimaRenderer* renderer) {
+    delete as_renderer(renderer);
+}
+
+void prima_render(PrimaRenderer* renderer, const PrimaCanvas* canvas,
+                  uint8_t* target, int width, int height, int stride,
+                  double pan_x, double pan_y, double zoom, uint8_t bg_r,
+                  uint8_t bg_g, uint8_t bg_b, uint8_t bg_a) {
+    if (!renderer || !canvas || !target) return;
+    RenderTarget rt{target, width, height, stride};
+    Viewport vp{pan_x, pan_y, zoom};
+    as_renderer(renderer)->render(*as_canvas(canvas), rt, vp,
+                                  Rgba{bg_r, bg_g, bg_b, bg_a});
 }
 
 }  // extern "C"

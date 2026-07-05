@@ -16,6 +16,17 @@ public sealed unsafe class Document : IDisposable
     /// <summary>Row stride in bytes (Width * 4 for RGBA8, no padding).</summary>
     public int Stride { get; }
 
+    /// <summary>The native canvas handle, for use by other in-assembly types
+    /// (e.g. <see cref="Renderer"/>). Throws if disposed.</summary>
+    internal nint Handle
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _handle;
+        }
+    }
+
     public Document(int width, int height)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
