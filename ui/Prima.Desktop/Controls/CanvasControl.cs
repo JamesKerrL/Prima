@@ -56,7 +56,13 @@ public sealed class CanvasControl : Control, IDisposable
     public Document? Document
     {
         get => _document;
-        set { _document = value; InvalidateVisual(); }
+        set
+        {
+            _document?.Dispose();
+            _document = value;
+            _autoFit = true;
+            InvalidateVisual();
+        }
     }
 
     public Viewport Viewport

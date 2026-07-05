@@ -34,7 +34,7 @@ Check off items as they land: `- [x] done thing`.
 
 ## Milestone 3 — Photo manipulation
 
-- [ ] PNG/JPEG import/export
+- [x] PNG/JPEG import/export
 - [ ] Selections
 - [ ] Adjustments: brightness/contrast/levels/blur (batch C++ algorithms)
 - [ ] Transforms: crop/resize/rotate

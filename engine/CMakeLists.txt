@@ -4,9 +4,10 @@ add_library(prima_engine STATIC
     src/software_renderer.cpp
     src/color.cpp
     src/color_wheel.cpp
+    src/image_io.cpp
 )
 
-target_include_directories(prima_engine PUBLIC include)
+target_include_directories(prima_engine PUBLIC include PRIVATE third_party)
 target_compile_features(prima_engine PUBLIC cxx_std_17)
 
 # Needed so the static engine can be linked into the prima_c shared library.

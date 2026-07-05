@@ -74,4 +74,25 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Lib)]
     internal static partial byte* prima_colorwheel_triangle_pixels(
         nint wheel, out int outW, out int outH);
+
+    // --- Image I/O -----------------------------------------------------------
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial byte* prima_image_load_file(
+        string path, out int outWidth, out int outHeight);
+
+    [LibraryImport(Lib)]
+    internal static partial byte* prima_image_load_memory(
+        byte* data, int len, out int outWidth, out int outHeight);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_image_free(byte* pixels);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int prima_image_save_png(
+        string path, byte* pixels, int width, int height);
+
+    [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int prima_image_save_jpeg(
+        string path, byte* pixels, int width, int height, int quality);
 }

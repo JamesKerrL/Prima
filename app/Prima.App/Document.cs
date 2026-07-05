@@ -6,7 +6,7 @@ namespace Prima.App;
 /// pixel buffer. Has no UI dependencies and is fully usable headlessly — both the
 /// desktop UI and the CLI host consume this same type.
 /// </summary>
-public sealed unsafe class Document : IDisposable
+public sealed unsafe partial class Document : IDisposable
 {
     private nint _handle;
 

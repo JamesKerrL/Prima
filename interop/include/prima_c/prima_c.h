@@ -107,6 +107,36 @@ PRIMA_C_API const uint8_t* prima_colorwheel_ring_pixels(PrimaColorWheel* wheel,
 PRIMA_C_API const uint8_t* prima_colorwheel_triangle_pixels(PrimaColorWheel* wheel,
                                                             int* out_w, int* out_h);
 
+/* --- Image I/O ---------------------------------------------------------------
+ * Image file load/save using stb_image. Loaded pixel buffers are allocated by
+ * the engine and must be freed with prima_image_free(). */
+
+/* Load an image from a file path. Returns a new RGBA8 pixel buffer that must
+ * be freed with prima_image_free(), or NULL on failure. */
+PRIMA_C_API uint8_t* prima_image_load_file(const char* path,
+                                           int* out_width, int* out_height);
+
+/* Load an image from an in-memory buffer. Returns a new RGBA8 pixel buffer
+ * that must be freed with prima_image_free(), or NULL on failure. */
+PRIMA_C_API uint8_t* prima_image_load_memory(const uint8_t* data, size_t len,
+                                             int* out_width, int* out_height);
+
+/* Free a pixel buffer returned by prima_image_load_file/memory. Safe to pass
+ * NULL. */
+PRIMA_C_API void prima_image_free(uint8_t* pixels);
+
+/* Save RGBA8 pixels as PNG. Returns 0 on success, non-zero on failure. */
+PRIMA_C_API int prima_image_save_png(const char* path,
+                                     const uint8_t* pixels,
+                                     int width, int height);
+
+/* Save RGBA8 pixels as JPEG with quality 1-100. Returns 0 on success,
+ * non-zero on failure. */
+PRIMA_C_API int prima_image_save_jpeg(const char* path,
+                                      const uint8_t* pixels,
+                                      int width, int height,
+                                      int quality);
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

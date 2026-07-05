@@ -1,10 +1,12 @@
 #include "prima_c/prima_c.h"
 
+#include <cstring>
 #include <new>
 
 #include "prima/canvas.h"
 #include "prima/color.h"
 #include "prima/color_wheel.h"
+#include "prima/image_io.h"
 #include "prima/renderer.h"
 #include "prima/viewport.h"
 
@@ -136,6 +138,48 @@ const uint8_t* prima_colorwheel_triangle_pixels(PrimaColorWheel* wheel,
     if (out_w) *out_w = w->TriangleWidth();
     if (out_h) *out_h = w->TriangleHeight();
     return w->TrianglePixels();
+}
+
+uint8_t* prima_image_load_file(const char* path, int* out_width,
+                               int* out_height) {
+    if (!path) return nullptr;
+    auto result = prima::loadImage(path);
+    if (!result) return nullptr;
+    if (out_width) *out_width = result->width;
+    if (out_height) *out_height = result->height;
+    auto* buf = new (std::nothrow) uint8_t[result->pixels.size()];
+    if (!buf) return nullptr;
+    std::memcpy(buf, result->pixels.data(), result->pixels.size());
+    return buf;
+}
+
+uint8_t* prima_image_load_memory(const uint8_t* data, size_t len,
+                                 int* out_width, int* out_height) {
+    if (!data || len == 0) return nullptr;
+    auto result = prima::loadImageFromMemory(data, len);
+    if (!result) return nullptr;
+    if (out_width) *out_width = result->width;
+    if (out_height) *out_height = result->height;
+    auto* buf = new (std::nothrow) uint8_t[result->pixels.size()];
+    if (!buf) return nullptr;
+    std::memcpy(buf, result->pixels.data(), result->pixels.size());
+    return buf;
+}
+
+void prima_image_free(uint8_t* pixels) {
+    delete[] pixels;
+}
+
+int prima_image_save_png(const char* path, const uint8_t* pixels,
+                         int width, int height) {
+    if (!path || !pixels || width <= 0 || height <= 0) return -1;
+    return prima::saveImagePng(path, pixels, width, height) ? 0 : -1;
+}
+
+int prima_image_save_jpeg(const char* path, const uint8_t* pixels,
+                          int width, int height, int quality) {
+    if (!path || !pixels || width <= 0 || height <= 0) return -1;
+    return prima::saveImageJpeg(path, pixels, width, height, quality) ? 0 : -1;
 }
 
 }  // extern "C"

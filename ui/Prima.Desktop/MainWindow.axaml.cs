@@ -1,8 +1,11 @@
 using System;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Prima.App;
+
+#pragma warning disable CS0618  // OpenFileDialog/SaveFileDialog are deprecated but work fine.
 
 namespace Prima.Desktop;
 
@@ -11,7 +14,6 @@ public partial class MainWindow : Window
     private const int CanvasWidth = 640;
     private const int CanvasHeight = 480;
 
-    private readonly Document _document;
     private SettingsWindow? _settingsWindow;
     private WindowState _preFullScreenState = WindowState.Maximized;
 
@@ -21,14 +23,80 @@ public partial class MainWindow : Window
 
         WindowState = WindowState.Maximized;
 
-        _document = new Document(CanvasWidth, CanvasHeight);
-        _document.Clear(Rgba.White);
+        var doc = new Document(CanvasWidth, CanvasHeight);
+        doc.Clear(Rgba.White);
 
-        Canvas.Document = _document;
+        Canvas.Document = doc;
         BrushColorPicker.SelectedColor = Canvas.BrushColor;
     }
 
     private void OnBrushColorChanged(object? sender, Rgba color) => Canvas.BrushColor = color;
+
+    private async void OnOpenFile(object? sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = "Open Image",
+            Filters =
+            {
+                new FileDialogFilter
+                {
+                    Name = "Image Files",
+                    Extensions = { "png", "jpg", "jpeg" }
+                },
+                new FileDialogFilter
+                {
+                    Name = "All Files",
+                    Extensions = { "*" }
+                }
+            },
+            AllowMultiple = false,
+        };
+
+        string[]? result = await dlg.ShowAsync(this);
+        if (result is null || result.Length == 0) return;
+
+        var doc = Document.LoadFromFile(result[0]);
+        if (doc is null) return;
+
+        Canvas.Document = doc;
+    }
+
+    private async void OnExportPng(object? sender, RoutedEventArgs e)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Title = "Export as PNG",
+            DefaultExtension = "png",
+            Filters =
+            {
+                new FileDialogFilter { Name = "PNG Image", Extensions = { "png" } }
+            },
+        };
+
+        string? path = await dlg.ShowAsync(this);
+        if (path is null) return;
+
+        Canvas.Document?.SaveAsPng(path);
+    }
+
+    private async void OnExportJpeg(object? sender, RoutedEventArgs e)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Title = "Export as JPEG",
+            DefaultExtension = "jpg",
+            Filters =
+            {
+                new FileDialogFilter { Name = "JPEG Image", Extensions = { "jpg", "jpeg" } }
+            },
+        };
+
+        string? path = await dlg.ShowAsync(this);
+        if (path is null) return;
+
+        Canvas.Document?.SaveAsJpeg(path);
+    }
 
     private void OnSettingsClick(object? sender, RoutedEventArgs e)
     {
@@ -71,7 +139,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        _document.Dispose();
+        Canvas.Document?.Dispose();
         base.OnClosed(e);
     }
 }
