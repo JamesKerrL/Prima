@@ -69,6 +69,7 @@ Brainstorm backlog — unprioritized, prune freely.
   (PNG/JPEG/WebP/PSD); light/dark theming; i18n; accessibility.
 
 - **Reference image:** reference-image.md
+- **Brush system (presets/UI/sharing/designer):** docs/features/BrushSystem.md
 - **3d model engine:** separate 3d model engine that allows posing a reference character
 - **Image segmentation:** use a small image segmentation ml algo
 - **Image upscaling:** use a small image segmentation ml algo
