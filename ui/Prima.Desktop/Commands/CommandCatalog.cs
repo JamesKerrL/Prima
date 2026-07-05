@@ -27,7 +27,7 @@ public static class CommandCatalog
         {
             Id = "file.export.png",
             Locate = () => window.LocateMenuItem("_File", "_Export", "As _PNG..."),
-            Reveal = () => window.RevealMenuAsync("_File"),
+            Reveal = () => window.RevealMenuAsync("_File", "_Export"),
         });
 
         registry.Register(new CommandDescriptor("file.export.jpeg", "Export as JPEG", "File",
@@ -36,7 +36,7 @@ public static class CommandCatalog
         {
             Id = "file.export.jpeg",
             Locate = () => window.LocateMenuItem("_File", "_Export", "As _JPEG..."),
-            Reveal = () => window.RevealMenuAsync("_File"),
+            Reveal = () => window.RevealMenuAsync("_File", "_Export"),
         });
 
         registry.Register(new CommandDescriptor("app.settings", "Settings", "File",

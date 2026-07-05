@@ -9,7 +9,9 @@
   <Folder Name="/tests/app/">
     <Project Path="tests/app/Prima.App.Tests/Prima.App.Tests.csproj" />
   </Folder>
-  <Folder Name="/tests/ui/" />
+  <Folder Name="/tests/ui/">
+    <Project Path="tests/ui/Prima.Desktop.Tests/Prima.Desktop.Tests.csproj" />
+  </Folder>
   <Folder Name="/ui/">
     <Project Path="ui/Prima.Desktop/Prima.Desktop.csproj" />
   </Folder>

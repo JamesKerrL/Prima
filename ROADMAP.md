@@ -75,4 +75,3 @@ Brainstorm backlog — unprioritized, prune freely.
 - **3d model engine:** separate 3d model engine that allows posing a reference character
 - **Image segmentation:** use a small image segmentation ml algo
 - **Image upscaling:** use a small image segmentation ml algo
-- **UX command** A command panel that lets you see the thing you searched via a flashing UI

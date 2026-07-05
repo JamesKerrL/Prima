@@ -188,22 +188,31 @@ public partial class MainWindow : Window
         }
     }
 
-    public async Task RevealMenuAsync(string parentHeader)
+    public async System.Threading.Tasks.Task RevealMenuAsync(params string[] menuPath)
     {
         var menu = this.FindControl<Menu>("PART_MainMenu");
         if (menu is null) return;
 
-        foreach (var item in menu.Items)
+        ItemsControl? current = menu;
+        foreach (var header in menuPath)
         {
-            if (item is MenuItem mi && string.Equals(
-                    mi.Header?.ToString(), parentHeader, StringComparison.Ordinal))
+            MenuItem? found = null;
+            foreach (var item in current.Items)
             {
-                mi.IsSubMenuOpen = true;
-                break;
+                if (item is MenuItem mi && string.Equals(
+                        mi.Header?.ToString(), header, StringComparison.Ordinal))
+                {
+                    found = mi;
+                    break;
+                }
             }
-        }
 
-        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            if (found is null) return;
+
+            found.IsSubMenuOpen = true;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            current = found;
+        }
     }
 
     public MenuItem? LocateMenuItem(params string[] headers)
