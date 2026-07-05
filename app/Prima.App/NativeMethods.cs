@@ -50,6 +50,8 @@ internal static unsafe partial class NativeMethods
         double panX, double panY, double zoom,
         byte bgR, byte bgG, byte bgB, byte bgA);
 
+    // --- Color -----------------------------------------------------------------
+
     [LibraryImport(Lib)]
     internal static partial void prima_color_rgba_to_hsv(
         byte r, byte g, byte b, out double h, out double s, out double v);
@@ -75,7 +77,7 @@ internal static unsafe partial class NativeMethods
     internal static partial byte* prima_colorwheel_triangle_pixels(
         nint wheel, out int outW, out int outH);
 
-    // --- Image I/O -----------------------------------------------------------
+    // --- Image I/O -------------------------------------------------------------
 
     [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial byte* prima_image_load_file(
@@ -95,4 +97,30 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Lib, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial int prima_image_save_jpeg(
         string path, byte* pixels, int width, int height, int quality);
+
+    // --- Brush / stroke engine ---
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct PrimaRect
+    {
+        public int X, Y, Width, Height;
+    }
+
+    [LibraryImport(Lib)]
+    internal static partial nint prima_brush_engine_create();
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_brush_engine_destroy(nint engine);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_stroke_begin(
+        nint engine, nint canvas, BrushParams* parameters);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_stroke_add(
+        nint engine, InputSample* samples, int count, out PrimaRect outDirty);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_stroke_end(
+        nint engine, out PrimaRect outDirty);
 }

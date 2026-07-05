@@ -1,0 +1,350 @@
+#include "prima/brush.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <vector>
+
+#include <gtest/gtest.h>
+
+#include "prima/canvas.h"
+
+using prima::BrushEngine;
+using prima::BrushParams;
+using prima::Canvas;
+using prima::InputSample;
+using prima::RectI;
+using prima::Rgba;
+
+namespace {
+
+Rgba readPixel(const Canvas& canvas, int x, int y) {
+    const uint8_t* p = canvas.pixels();
+    std::size_t idx = (static_cast<std::size_t>(y) * canvas.width() + x) * 4;
+    return Rgba{p[idx + 0], p[idx + 1], p[idx + 2], p[idx + 3]};
+}
+
+}  // namespace
+
+// 1. Single-dab AA edges.
+TEST(BrushEngineTest, SingleDabHasAntiAliasedEdgesAndFullCenterCoverage) {
+    Canvas canvas(64, 64);
+    canvas.clear(Rgba{0, 0, 0, 0});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 10;
+    p.hardness = 0.8f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{255, 0, 0, 255};
+
+    engine.beginStroke(canvas, p);
+    InputSample s{32.f, 32.f, 1.f};
+    engine.addSamples(&s, 1);
+    engine.endStroke();
+
+    // Center is fully covered.
+    EXPECT_EQ(readPixel(canvas, 32, 32).a, 255);
+
+    // Well beyond radius + 0.5 is untouched.
+    EXPECT_EQ(readPixel(canvas, 32 + 20, 32).a, 0);
+
+    // Ring pixel at distance slightly less than outer (radius+0.5) shows
+    // partial AA coverage. Pixel (32+9, 32) is at d ~= 9.5 from center (32,32),
+    // which sits between inner=7.6 and outer=10.5 at hardness=0.8.
+    uint8_t ringAlpha = readPixel(canvas, 32 + 9, 32).a;
+    EXPECT_GT(ringAlpha, 0);
+    EXPECT_LT(ringAlpha, 255);
+}
+
+TEST(BrushEngineTest, SingleDabCenteredOnPixelCenterIsFourWaySymmetric) {
+    Canvas canvas(64, 64);
+    canvas.clear(Rgba{0, 0, 0, 0});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 10;
+    p.hardness = 0.8f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{255, 0, 0, 255};
+
+    engine.beginStroke(canvas, p);
+    InputSample s{32.5f, 32.5f, 1.f};
+    engine.addSamples(&s, 1);
+    engine.endStroke();
+
+    Rgba right = readPixel(canvas, 42, 32);
+    Rgba left = readPixel(canvas, 22, 32);
+    Rgba down = readPixel(canvas, 32, 42);
+    Rgba up = readPixel(canvas, 32, 22);
+
+    auto eq = [](const Rgba& a, const Rgba& b) {
+        return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
+    };
+
+    EXPECT_TRUE(eq(right, left));
+    EXPECT_TRUE(eq(right, down));
+    EXPECT_TRUE(eq(right, up));
+}
+
+// 2. Opacity cap.
+TEST(BrushEngineTest, OpacityCapsSingleDabCenterCoverage) {
+    Canvas canvas(64, 64);
+    canvas.clear(Rgba{0, 0, 0, 0});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 10;
+    p.hardness = 1;
+    p.opacity = 0.5f;
+    p.flow = 1;
+    p.color = Rgba{0, 0, 255, 255};
+
+    engine.beginStroke(canvas, p);
+    InputSample s{32.f, 32.f, 1.f};
+    engine.addSamples(&s, 1);
+    engine.endStroke();
+
+    uint8_t expected = static_cast<uint8_t>(std::lround(255.f * p.opacity));
+    EXPECT_EQ(readPixel(canvas, 32, 32).a, expected);
+}
+
+TEST(BrushEngineTest, OverlappingSaturatedDabsWithinOneStrokeDoNotExceedOpacityCap) {
+    Canvas canvas(64, 64);
+    canvas.clear(Rgba{0, 0, 0, 0});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 10;
+    p.hardness = 1;
+    p.opacity = 0.5f;
+    p.flow = 1;
+    p.color = Rgba{0, 0, 255, 255};
+
+    engine.beginStroke(canvas, p);
+    // Two dab centers 5px apart (well within 2*radius) so they overlap heavily;
+    // both centers individually saturate to full coverage since flow == 1.
+    InputSample s1{30.f, 32.f, 1.f};
+    engine.addSamples(&s1, 1);
+    InputSample s2{35.f, 32.f, 1.f};
+    engine.addSamples(&s2, 1);
+    engine.endStroke();
+
+    uint8_t expected = static_cast<uint8_t>(std::lround(255.f * p.opacity));
+
+    // Each dab's own center: fully covered by its own dab (cov == 1.0).
+    Rgba centerA = readPixel(canvas, 30, 32);
+    Rgba centerB = readPixel(canvas, 35, 32);
+    // Overlap centroid: covered by both dabs, still saturates to cov == 1.0,
+    // never exceeding the opacity cap.
+    Rgba overlap = readPixel(canvas, 32, 32);  // between the two centers
+
+    EXPECT_EQ(centerA.a, expected);
+    EXPECT_EQ(centerB.a, expected);
+    EXPECT_EQ(overlap.a, expected);
+}
+
+// 3. Flow build-up.
+TEST(BrushEngineTest, OverlappingLowFlowDabsBuildUpCoverageButNeverExceedFullAlpha) {
+    BrushParams p;
+    p.radius = 10;
+    p.hardness = 1;
+    p.opacity = 1;
+    p.flow = 0.25f;
+    p.spacing = 0.01f;  // forces a small step so a short stroke stamps many dabs
+
+    // Stroke A: a very short stroke (few overlapping dabs).
+    Canvas canvasA(64, 64);
+    canvasA.clear(Rgba{0, 0, 0, 0});
+    BrushEngine engineA;
+    engineA.beginStroke(canvasA, p);
+    InputSample a1{30.f, 32.f, 1.f};
+    engineA.addSamples(&a1, 1);
+    InputSample a2{32.f, 32.f, 1.f};
+    engineA.addSamples(&a2, 1);
+    engineA.endStroke();
+
+    // Stroke B: a longer stroke over the same start (many more overlapping dabs
+    // pass near the same region).
+    Canvas canvasB(64, 64);
+    canvasB.clear(Rgba{0, 0, 0, 0});
+    BrushEngine engineB;
+    engineB.beginStroke(canvasB, p);
+    InputSample b1{30.f, 32.f, 1.f};
+    engineB.addSamples(&b1, 1);
+    InputSample b2{45.f, 32.f, 1.f};
+    engineB.addSamples(&b2, 1);
+    engineB.endStroke();
+
+    uint8_t alphaA = readPixel(canvasA, 30, 32).a;
+    uint8_t alphaB = readPixel(canvasB, 30, 32).a;
+
+    EXPECT_GE(alphaB, alphaA);
+    EXPECT_LE(alphaA, 255);
+    EXPECT_LE(alphaB, 255);
+}
+
+// 4. Straight-alpha correctness / no fringe.
+TEST(BrushEngineTest, CenterPixelRgbMatchesBrushColorExactlyWithNoFringe) {
+    Canvas canvas(64, 64);
+    canvas.clear(Rgba{0, 0, 0, 0});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 10;
+    p.hardness = 0.8f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{255, 0, 0, 255};
+
+    engine.beginStroke(canvas, p);
+    InputSample s{32.f, 32.f, 1.f};
+    engine.addSamples(&s, 1);
+    engine.endStroke();
+
+    Rgba center = readPixel(canvas, 32, 32);
+    EXPECT_EQ(center.r, 255);
+    EXPECT_EQ(center.g, 0);
+    EXPECT_EQ(center.b, 0);
+}
+
+// 5. Dirty-rect exactness.
+TEST(BrushEngineTest, DirtyRectExactlyMatchesChangedPixelBoundingBox) {
+    Canvas canvas(64, 64);
+    canvas.clear(Rgba{0, 0, 0, 0});
+
+    std::vector<uint8_t> before(canvas.pixels(), canvas.pixels() + canvas.byteSize());
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 10;
+    p.hardness = 0.8f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{255, 0, 0, 255};
+
+    engine.beginStroke(canvas, p);
+
+    RectI accumulated{};
+    InputSample s1{20.f, 20.f, 1.f};
+    accumulated.unionWith(engine.addSamples(&s1, 1));
+    InputSample s2{45.f, 40.f, 1.f};
+    accumulated.unionWith(engine.addSamples(&s2, 1));
+    accumulated.unionWith(engine.endStroke());
+
+    // Compute actual bounding box of changed pixels by diffing before/after.
+    const uint8_t* after = canvas.pixels();
+    int minX = canvas.width(), minY = canvas.height();
+    int maxX = -1, maxY = -1;
+    for (int y = 0; y < canvas.height(); ++y) {
+        for (int x = 0; x < canvas.width(); ++x) {
+            std::size_t idx = (static_cast<std::size_t>(y) * canvas.width() + x) * 4;
+            if (std::memcmp(before.data() + idx, after + idx, 4) != 0) {
+                minX = std::min(minX, x);
+                minY = std::min(minY, y);
+                maxX = std::max(maxX, x);
+                maxY = std::max(maxY, y);
+            }
+        }
+    }
+
+    ASSERT_LE(minX, maxX) << "expected some pixels to change";
+    RectI actual{minX, minY, maxX - minX + 1, maxY - minY + 1};
+
+    EXPECT_EQ(accumulated.x, actual.x);
+    EXPECT_EQ(accumulated.y, actual.y);
+    EXPECT_EQ(accumulated.width, actual.width);
+    EXPECT_EQ(accumulated.height, actual.height);
+}
+
+TEST(BrushEngineTest, TinySubThresholdSampleReturnsEmptyDirtyRect) {
+    Canvas canvas(64, 64);
+    canvas.clear(Rgba{0, 0, 0, 0});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 10;
+    p.hardness = 0.8f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{255, 0, 0, 255};
+
+    engine.beginStroke(canvas, p);
+    InputSample penDown{32.f, 32.f, 1.f};
+    RectI first = engine.addSamples(&penDown, 1);
+    EXPECT_FALSE(first.empty());
+
+    InputSample tinyMove{32.01f, 32.f, 1.f};
+    RectI second = engine.addSamples(&tinyMove, 1);
+    EXPECT_TRUE(second.empty());
+
+    engine.endStroke();
+}
+
+// 6. Stroke isolation / batching determinism on pixels.
+TEST(BrushEngineTest, IdenticalStrokesOnFreshCanvasesProduceIdenticalPixels) {
+    BrushParams p;
+    p.radius = 10;
+    p.hardness = 0.8f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{255, 0, 0, 255};
+
+    auto runStroke = [&](Canvas& canvas, BrushEngine& engine) {
+        canvas.clear(Rgba{0, 0, 0, 0});
+        engine.beginStroke(canvas, p);
+        InputSample s1{20.f, 20.f, 1.f};
+        engine.addSamples(&s1, 1);
+        InputSample s2{45.f, 40.f, 1.f};
+        engine.addSamples(&s2, 1);
+        engine.endStroke();
+    };
+
+    Canvas canvasA(64, 64);
+    BrushEngine engineA;
+    runStroke(canvasA, engineA);
+
+    Canvas canvasB(64, 64);
+    BrushEngine engineB;
+    runStroke(canvasB, engineB);
+
+    EXPECT_EQ(std::memcmp(canvasA.pixels(), canvasB.pixels(), canvasA.byteSize()), 0);
+}
+
+TEST(BrushEngineTest, BatchingSamplesIntoMultipleAddSamplesCallsMatchesSingleCall) {
+    BrushParams p;
+    p.radius = 10;
+    p.hardness = 0.8f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{255, 0, 0, 255};
+
+    InputSample samples[] = {
+        InputSample{20.f, 20.f, 1.f},
+        InputSample{30.f, 25.f, 1.f},
+        InputSample{45.f, 40.f, 1.f},
+    };
+
+    // Canvas A: all samples in one addSamples call.
+    Canvas canvasA(64, 64);
+    canvasA.clear(Rgba{0, 0, 0, 0});
+    BrushEngine engineA;
+    engineA.beginStroke(canvasA, p);
+    engineA.addSamples(samples, 3);
+    engineA.endStroke();
+
+    // Canvas B: samples fed one at a time across separate addSamples calls.
+    Canvas canvasB(64, 64);
+    canvasB.clear(Rgba{0, 0, 0, 0});
+    BrushEngine engineB;
+    engineB.beginStroke(canvasB, p);
+    for (const auto& s : samples) {
+        InputSample single = s;
+        engineB.addSamples(&single, 1);
+    }
+    engineB.endStroke();
+
+    EXPECT_EQ(std::memcmp(canvasA.pixels(), canvasB.pixels(), canvasA.byteSize()), 0);
+}

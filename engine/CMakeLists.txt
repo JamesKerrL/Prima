@@ -5,6 +5,8 @@ add_library(prima_engine STATIC
     src/color.cpp
     src/color_wheel.cpp
     src/image_io.cpp
+    src/dab_emitter.cpp
+    src/brush_engine.cpp
 )
 
 target_include_directories(prima_engine PUBLIC include PRIVATE third_party)

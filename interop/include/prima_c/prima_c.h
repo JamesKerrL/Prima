@@ -137,6 +137,49 @@ PRIMA_C_API int prima_image_save_jpeg(const char* path,
                                       int width, int height,
                                       int quality);
 
+/* --- Brush / strokes ---------------------------------------------------------
+ * A brush engine turns batched pointer input into dabs composited onto a canvas.
+ * The add-samples path is the only per-input-event call: one call per UI pointer
+ * event, with the event's coalesced samples passed in a single batch. */
+
+/* All fields mirror prima::BrushParams / InputSample. */
+typedef struct PrimaBrushParams {
+    int32_t struct_size;          /* = sizeof(PrimaBrushParams); enables additive growth */
+    float radius, hardness, opacity, flow, spacing;
+    float size_pressure_min, size_pressure_gamma;
+    float flow_pressure_min, flow_pressure_gamma;
+    uint8_t r, g, b, a;
+} PrimaBrushParams;
+
+typedef struct PrimaInputSample {
+    float x, y;                   /* canvas coords, subpixel */
+    float pressure;               /* 0..1; pass 1.0 if the device has none */
+    float tilt_x, tilt_y, rotation;   /* reserved, pass 0 */
+    double time_ms;               /* reserved, pass 0 */
+} PrimaInputSample;
+
+typedef struct PrimaRect { int32_t x, y, width, height; } PrimaRect;  /* width<=0 => empty */
+
+/* Opaque handle to a brush/stroke engine. One per document is typical. */
+typedef struct PrimaBrushEngine PrimaBrushEngine;
+
+PRIMA_C_API PrimaBrushEngine* prima_brush_engine_create(void);
+PRIMA_C_API void prima_brush_engine_destroy(PrimaBrushEngine* engine);
+
+/* Begin a stroke on `canvas` with `params` (copied). If a stroke is already
+ * active it is ended first. `canvas` must outlive the stroke. */
+PRIMA_C_API void prima_stroke_begin(PrimaBrushEngine* engine, PrimaCanvas* canvas,
+                                    const PrimaBrushParams* params);
+
+/* Feed `count` samples in one batched call -- the ONLY per-input-event call;
+ * one call per UI pointer event, samples coalesced inside. out_dirty
+ * (optional) receives the canvas rect modified by this call. */
+PRIMA_C_API void prima_stroke_add(PrimaBrushEngine* engine,
+                                  const PrimaInputSample* samples, int count,
+                                  PrimaRect* out_dirty);
+
+PRIMA_C_API void prima_stroke_end(PrimaBrushEngine* engine, PrimaRect* out_dirty);
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

@@ -10,8 +10,9 @@ Check off items as they land: `- [x] done thing`.
 
 ## Milestone 1 — Drawing core (next up)
 
-- [ ] Real brush engine: size, hardness, opacity, spacing along a stroke (not
-      just one dab)
+- [x] Real brush engine: size, hardness, opacity, spacing along a stroke (not
+      just one dab) — analytic AA, pressure→size/flow, coverage buffer with
+      flow/opacity semantics, dirty-rect partial invalidation
 - [ ] Layers: add/remove/reorder, per-layer opacity, blend modes
 - [ ] Undo/redo (command pattern in the app layer)
 - [x] Canvas pan/zoom (delivered via the render-backend work below)

@@ -3,6 +3,7 @@
 #include <cstring>
 #include <new>
 
+#include "prima/brush.h"
 #include "prima/canvas.h"
 #include "prima/color.h"
 #include "prima/color_wheel.h"
@@ -10,16 +11,26 @@
 #include "prima/renderer.h"
 #include "prima/viewport.h"
 
+using prima::BrushEngine;
+using prima::BrushParams;
 using prima::Canvas;
 using prima::ColorWheel;
 using prima::Hsv;
 using prima::HsvFromRgba;
+using prima::InputSample;
+using prima::RectI;
 using prima::RenderTarget;
 using prima::Renderer;
 using prima::Rgba;
 using prima::RgbaFromHsv;
 using prima::SoftwareRenderer;
 using prima::Viewport;
+
+// PrimaInputSample and prima::InputSample share an identical field layout
+// (float x, y, pressure, tilt*, rotation; double time*), so the sample batch is
+// reinterpret_cast across the boundary -- no per-event copy or heap allocation.
+static_assert(sizeof(PrimaInputSample) == sizeof(InputSample),
+              "PrimaInputSample must be layout-compatible with prima::InputSample");
 
 namespace {
 Canvas* as_canvas(PrimaCanvas* c) { return reinterpret_cast<Canvas*>(c); }
@@ -29,6 +40,18 @@ const Canvas* as_canvas(const PrimaCanvas* c) {
 Renderer* as_renderer(PrimaRenderer* r) { return reinterpret_cast<Renderer*>(r); }
 ColorWheel* as_colorwheel(PrimaColorWheel* w) {
     return reinterpret_cast<ColorWheel*>(w);
+}
+BrushEngine* as_brush_engine(PrimaBrushEngine* e) {
+    return reinterpret_cast<BrushEngine*>(e);
+}
+
+// Copy a native RectI into the caller's optional out-rect.
+void write_rect(PrimaRect* out, const RectI& r) {
+    if (!out) return;
+    out->x = r.x;
+    out->y = r.y;
+    out->width = r.width;
+    out->height = r.height;
 }
 }  // namespace
 
@@ -180,6 +203,48 @@ int prima_image_save_jpeg(const char* path, const uint8_t* pixels,
                           int width, int height, int quality) {
     if (!path || !pixels || width <= 0 || height <= 0) return -1;
     return prima::saveImageJpeg(path, pixels, width, height, quality) ? 0 : -1;
+}
+
+PrimaBrushEngine* prima_brush_engine_create(void) {
+    return reinterpret_cast<PrimaBrushEngine*>(new (std::nothrow) BrushEngine());
+}
+
+void prima_brush_engine_destroy(PrimaBrushEngine* engine) {
+    delete as_brush_engine(engine);
+}
+
+void prima_stroke_begin(PrimaBrushEngine* engine, PrimaCanvas* canvas,
+                        const PrimaBrushParams* params) {
+    if (!engine || !canvas || !params) return;
+    BrushParams bp;
+    bp.radius = params->radius;
+    bp.hardness = params->hardness;
+    bp.opacity = params->opacity;
+    bp.flow = params->flow;
+    bp.spacing = params->spacing;
+    bp.sizeResponse.minFactor = params->size_pressure_min;
+    bp.sizeResponse.gamma = params->size_pressure_gamma;
+    bp.flowResponse.minFactor = params->flow_pressure_min;
+    bp.flowResponse.gamma = params->flow_pressure_gamma;
+    bp.color = Rgba{params->r, params->g, params->b, params->a};
+    as_brush_engine(engine)->beginStroke(*as_canvas(canvas), bp);
+}
+
+void prima_stroke_add(PrimaBrushEngine* engine, const PrimaInputSample* samples,
+                      int count, PrimaRect* out_dirty) {
+    if (!engine) return;
+    if (!samples || count <= 0) {
+        write_rect(out_dirty, RectI{});
+        return;
+    }
+    RectI dirty = as_brush_engine(engine)->addSamples(
+        reinterpret_cast<const InputSample*>(samples), count);
+    write_rect(out_dirty, dirty);
+}
+
+void prima_stroke_end(PrimaBrushEngine* engine, PrimaRect* out_dirty) {
+    if (!engine) return;
+    write_rect(out_dirty, as_brush_engine(engine)->endStroke());
 }
 
 }  // extern "C"
