@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Prima.Desktop.Controls"
+             x:Class="Prima.Desktop.Controls.CommandPalette">
+  <Panel Background="#80000000">
+    <Border Background="{StaticResource PrimaSurfaceBrush}"
+            Padding="{StaticResource PrimaPadLarge}"
+            Width="500"
+            HorizontalAlignment="Center"
+            Margin="0,80,0,0"
+            CornerRadius="6">
+      <StackPanel Spacing="8">
+        <TextBox x:Name="PART_SearchBox"
+                 Watermark="Search commands..."
+                 UseFloatingWatermark="False"
+                 Background="{StaticResource PrimaBackgroundBrush}"
+                 Foreground="{StaticResource PrimaTextBrush}"
+                 FontSize="16"
+                 Padding="10,8"
+                 BorderBrush="{StaticResource PrimaAccentBrush}"
+                 BorderThickness="1" />
+        <ListBox x:Name="PART_Results"
+                 MaxHeight="360"
+                 Background="Transparent"
+                 BorderThickness="0">
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+              <Setter Property="Padding" Value="10,8" />
+              <Setter Property="Background" Value="Transparent" />
+              <Setter Property="Foreground" Value="{StaticResource PrimaTextBrush}" />
+              <Setter Property="FontSize" Value="14" />
+            </Style>
+            <Style Selector="ListBoxItem:selected">
+              <Setter Property="Background" Value="{StaticResource PrimaAccentBrush}" />
+              <Setter Property="Foreground" Value="White" />
+            </Style>
+            <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+              <Setter Property="Background" Value="{StaticResource PrimaAccentBrush}" />
+            </Style>
+          </ListBox.Styles>
+        </ListBox>
+      </StackPanel>
+    </Border>
+  </Panel>
+</UserControl>

@@ -4,29 +4,39 @@
         x:Class="Prima.Desktop.MainWindow"
         Title="Prima" Width="820" Height="640"
         Background="{StaticResource PrimaBackgroundBrush}">
-  <DockPanel>
-    <Menu DockPanel.Dock="Top">
+  <Panel>
+    <DockPanel LastChildFill="True">
+      <Menu x:Name="PART_MainMenu" DockPanel.Dock="Top">
         <MenuItem Header="_File">
-          <MenuItem Header="_Open..." InputGesture="Ctrl+O" Click="OnOpenFile" />
+          <MenuItem x:Name="PART_MenuItemOpen"
+                    Header="_Open..." InputGesture="Ctrl+O" Click="OnOpenFile" />
           <Separator />
           <MenuItem Header="_Export">
-            <MenuItem Header="As _PNG..." InputGesture="Ctrl+Shift+S" Click="OnExportPng" />
-            <MenuItem Header="As _JPEG..." Click="OnExportJpeg" />
+            <MenuItem x:Name="PART_MenuItemExportPng"
+                      Header="As _PNG..." InputGesture="Ctrl+Shift+S" Click="OnExportPng" />
+            <MenuItem x:Name="PART_MenuItemExportJpeg"
+                      Header="As _JPEG..." Click="OnExportJpeg" />
           </MenuItem>
           <Separator />
-          <MenuItem Header="_Settings..." Click="OnSettingsClick" />
+          <MenuItem x:Name="PART_MenuItemSettings"
+                    Header="_Settings..." Click="OnSettingsClick" />
         </MenuItem>
       <MenuItem Header="_Edit">
         <MenuItem Header="_Undo" InputGesture="Ctrl+Z" Click="OnUndoClick" />
         <MenuItem Header="_Redo" InputGesture="Ctrl+Shift+Z" Click="OnRedoClick" />
       </MenuItem>
       <MenuItem Header="_View">
-        <MenuItem Header="Toggle _Fullscreen" InputGesture="F11" Click="OnToggleFullScreenClick" />
+        <MenuItem x:Name="PART_MenuItemFullscreen"
+                  Header="Toggle _Fullscreen" InputGesture="F11" Click="OnToggleFullScreenClick" />
       </MenuItem>
-    </Menu>
+      <MenuItem Header="_Help">
+        <MenuItem Header="_Find a Command…" InputGesture="Ctrl+K"
+                  Click="OnFindCommand" />
+      </MenuItem>
+      </Menu>
 
-    <DockPanel LastChildFill="True">
-      <controls:ToolPanel DockPanel.Dock="Left"
+      <controls:ToolPanel x:Name="PART_ToolPanel"
+                          DockPanel.Dock="Left"
                           ToolSelected="OnToolSelected" />
       <Border DockPanel.Dock="Right"
               Background="{StaticResource PrimaSurfaceBrush}"
@@ -44,5 +54,8 @@
                    Margin="{StaticResource PrimaPadMedium}" />
       </Grid>
     </DockPanel>
-  </DockPanel>
+
+    <controls:CommandPalette x:Name="Palette" IsVisible="False" />
+    <Canvas x:Name="PART_HighlightLayer" IsHitTestVisible="False" />
+  </Panel>
 </Window>

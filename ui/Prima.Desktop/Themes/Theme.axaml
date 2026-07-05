@@ -21,6 +21,9 @@
     <SolidColorBrush x:Key="PrimaTextBrush" Color="{StaticResource PrimaText}" />
     <SolidColorBrush x:Key="PrimaHandleStrokeBrush" Color="{StaticResource PrimaHandleStroke}" />
 
+    <!-- Flash highlight for command-search reveal; a semi-transparent accent -->
+    <SolidColorBrush x:Key="PrimaFlashBrush" Color="#CC4C8DFF" />
+
     <!-- Spacing (as Thickness so it can drive Padding/Margin directly) -->
     <Thickness x:Key="PrimaPadMedium">8</Thickness>
     <Thickness x:Key="PrimaPadLarge">16</Thickness>

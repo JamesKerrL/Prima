@@ -3,7 +3,11 @@ using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Prima.App;
+using Prima.App.Commands;
+using Prima.Desktop.Commands;
+using Prima.Desktop.Controls;
 
 #pragma warning disable CS0618  // OpenFileDialog/SaveFileDialog are deprecated but work fine.
 
@@ -17,6 +21,9 @@ public partial class MainWindow : Window
 
     private SettingsWindow? _settingsWindow;
     private WindowState _preFullScreenState = WindowState.Maximized;
+
+    private readonly CommandRegistry _commandRegistry = new();
+    private readonly CommandTargetRegistry _targetRegistry = new();
 
     public MainWindow()
     {
@@ -40,6 +47,13 @@ public partial class MainWindow : Window
         Canvas.Document = doc;
         doc.History.Changed += OnHistoryChanged;
         UpdateTitle();
+
+        BrushColorPicker.SelectedColor = Canvas.BrushColor;
+
+        CommandCatalog.Populate(this, _commandRegistry, _targetRegistry);
+
+        Palette.CommandChosen += OnPaletteCommandChosen;
+        Palette.Dismissed += (_, _) => Palette.Hide();
     }
 
     private void OnHistoryChanged() => UpdateTitle();
@@ -150,6 +164,71 @@ public partial class MainWindow : Window
     }
 
     private void OnToggleFullScreenClick(object? sender, RoutedEventArgs e) => ToggleFullScreen();
+
+    private void OnFindCommand(object? sender, RoutedEventArgs e)
+    {
+        Palette.Show(_commandRegistry);
+    }
+
+    private async void OnPaletteCommandChosen(object? sender, string id)
+    {
+        try
+        {
+            Palette.Hide();
+
+            var target = _targetRegistry.Get(id);
+            if (target?.Reveal is { } reveal)
+                await reveal();
+
+            await ControlHighlighter.FlashAsync(target?.Locate());
+        }
+        catch
+        {
+            // Prevent async void crashes from silently breaking the feature
+        }
+    }
+
+    public async Task RevealMenuAsync(string parentHeader)
+    {
+        var menu = this.FindControl<Menu>("PART_MainMenu");
+        if (menu is null) return;
+
+        foreach (var item in menu.Items)
+        {
+            if (item is MenuItem mi && string.Equals(
+                    mi.Header?.ToString(), parentHeader, StringComparison.Ordinal))
+            {
+                mi.IsSubMenuOpen = true;
+                break;
+            }
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+    }
+
+    public MenuItem? LocateMenuItem(params string[] headers)
+    {
+        var menu = this.FindControl<Menu>("PART_MainMenu");
+        if (menu is null) return null;
+
+        ItemsControl? current = menu;
+        foreach (var header in headers)
+        {
+            MenuItem? found = null;
+            foreach (var item in current.Items)
+            {
+                if (item is MenuItem mi && string.Equals(
+                        mi.Header?.ToString(), header, StringComparison.Ordinal))
+                {
+                    found = mi;
+                    break;
+                }
+            }
+            current = found;
+            if (current is null) return null;
+        }
+        return current as MenuItem;
+    }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
