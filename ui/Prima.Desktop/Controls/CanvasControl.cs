@@ -47,6 +47,9 @@ public sealed class CanvasControl : Control, IDisposable
     /// <summary>Brush color.</summary>
     public Rgba BrushColor { get; set; } = new(40, 90, 220, 255);
 
+    /// <summary>Currently selected tool.</summary>
+    public ToolType CurrentTool { get; set; } = ToolType.Brush;
+
     public CanvasControl()
     {
         ClipToBounds = true;
@@ -204,9 +207,20 @@ public sealed class CanvasControl : Control, IDisposable
     private void Paint(Point posDip)
     {
         if (_document is null) return;
+
+        switch (CurrentTool)
+        {
+            case ToolType.Brush:
+                PaintBrush(posDip);
+                break;
+        }
+    }
+
+    private void PaintBrush(Point posDip)
+    {
         int cx = (int)Math.Floor(_viewport.TargetToCanvasX(posDip.X));
         int cy = (int)Math.Floor(_viewport.TargetToCanvasY(posDip.Y));
-        _document.BrushDab(cx, cy, BrushRadius, BrushColor);
+        _document!.BrushDab(cx, cy, BrushRadius, BrushColor);
         InvalidateVisual();
     }
 

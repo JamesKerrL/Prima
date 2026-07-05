@@ -22,6 +22,8 @@
     </Menu>
 
     <DockPanel LastChildFill="True">
+      <controls:ToolPanel DockPanel.Dock="Left"
+                          ToolSelected="OnToolSelected" />
       <Border DockPanel.Dock="Right"
               Background="{StaticResource PrimaSurfaceBrush}"
               Padding="{StaticResource PrimaPadMedium}">

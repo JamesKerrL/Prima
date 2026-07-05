@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Prima.Desktop.Controls.ToolPanel">
+  <Border Background="{StaticResource PrimaSurfaceBrush}"
+          Padding="{StaticResource PrimaPadMedium}"
+          Width="44">
+    <StackPanel Spacing="4">
+      <RadioButton x:Name="PART_Brush"
+                   GroupName="ToolGroup"
+                   Width="36" Height="36"
+                   Padding="0"
+                   IsChecked="True"
+                   ToolTip.Tip="Brush">
+        <TextBlock Text="&#x270E;"
+                   FontSize="16"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Foreground="{StaticResource PrimaTextBrush}" />
+      </RadioButton>
+    </StackPanel>
+  </Border>
+</UserControl>

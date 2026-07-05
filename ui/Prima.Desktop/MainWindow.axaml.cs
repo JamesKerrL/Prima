@@ -32,6 +32,8 @@ public partial class MainWindow : Window
 
     private void OnBrushColorChanged(object? sender, Rgba color) => Canvas.BrushColor = color;
 
+    private void OnToolSelected(object? sender, ToolType tool) => Canvas.CurrentTool = tool;
+
     private async void OnOpenFile(object? sender, RoutedEventArgs e)
     {
         var dlg = new OpenFileDialog
