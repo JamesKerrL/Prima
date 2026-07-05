@@ -25,24 +25,39 @@
                                        Height="240"
                                        HorizontalAlignment="Center" />
 
-      <Grid ColumnDefinitions="Auto,*">
-        <controls:ColorPreviewSplit x:Name="PART_Preview"
-                                    Grid.Column="0"
-                                    VerticalAlignment="Top" />
-        <WrapPanel x:Name="PART_Fields"
-                   Grid.Column="1"
-                   Margin="8,0,0,0"
-                   ItemHeight="28"
-                   ItemWidth="86">
-          <controls:LabeledColorField x:Name="PART_Hex" Label="#" />
-          <controls:LabeledColorField x:Name="PART_R" Label="R" />
-          <controls:LabeledColorField x:Name="PART_G" Label="G" />
-          <controls:LabeledColorField x:Name="PART_B" Label="B" />
-          <controls:LabeledColorField x:Name="PART_H" Label="H" />
-          <controls:LabeledColorField x:Name="PART_S" Label="S" />
-          <controls:LabeledColorField x:Name="PART_V" Label="V" />
-        </WrapPanel>
+      <controls:ColorPreviewSplit x:Name="PART_Preview" />
+
+      <Grid ColumnDefinitions="Auto,4,Auto,4,Auto">
+        <ToggleButton x:Name="PART_TabRgb"
+                      Content="RGB"
+                      Click="OnTabClick" />
+        <ToggleButton x:Name="PART_TabHsv"
+                      Grid.Column="2"
+                      Content="HSV"
+                      Click="OnTabClick" />
+        <ToggleButton x:Name="PART_TabHex"
+                      Grid.Column="4"
+                      Content="HEX"
+                      Click="OnTabClick" />
       </Grid>
+
+      <StackPanel x:Name="PART_RgbPanel" Spacing="2">
+        <controls:ColorSliderControl x:Name="PART_SliderR" LabelText="Red (R)" Maximum="255" />
+        <controls:ColorSliderControl x:Name="PART_SliderG" LabelText="Green (G)" Maximum="255" />
+        <controls:ColorSliderControl x:Name="PART_SliderB" LabelText="Blue (B)" Maximum="255" />
+        <controls:ColorSliderControl x:Name="PART_SliderA" LabelText="Alpha (A)" Maximum="255" />
+      </StackPanel>
+
+      <StackPanel x:Name="PART_HsvPanel" Spacing="2" IsVisible="False">
+        <controls:ColorSliderControl x:Name="PART_SliderH" LabelText="Hue (H)" Maximum="360" />
+        <controls:ColorSliderControl x:Name="PART_SliderS" LabelText="Saturation (S)" Maximum="100" />
+        <controls:ColorSliderControl x:Name="PART_SliderV" LabelText="Value (V)" Maximum="100" />
+        <controls:ColorSliderControl x:Name="PART_SliderA2" LabelText="Alpha (A)" Maximum="255" />
+      </StackPanel>
+
+      <StackPanel x:Name="PART_HexPanel" Spacing="2" IsVisible="False">
+        <controls:LabeledColorField x:Name="PART_Hex" Label="#" />
+      </StackPanel>
 
       <Button x:Name="PART_AddSwatch"
               HorizontalAlignment="Left"

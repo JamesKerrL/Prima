@@ -47,4 +47,17 @@
     <Setter Property="Background" Value="{StaticResource PrimaBackgroundBrush}" />
     <Setter Property="Foreground" Value="{StaticResource PrimaTextBrush}" />
   </Style>
+
+  <Style Selector="ToggleButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource PrimaTextBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource PrimaTextBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="12,4" />
+  </Style>
+  <Style Selector="ToggleButton:checked">
+    <Setter Property="Background" Value="{StaticResource PrimaAccentBrush}" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderBrush" Value="{StaticResource PrimaAccentBrush}" />
+  </Style>
 </Styles>

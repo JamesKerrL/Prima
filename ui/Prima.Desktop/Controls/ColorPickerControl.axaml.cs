@@ -2,15 +2,13 @@ using System;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Prima.App;
 
 namespace Prima.Desktop.Controls;
 
-/// <summary>
-/// Thin color-picker shell used by the rest of the UI. The interactive wheel
-/// and color math live below this control; MainWindow only sees Rgba values.
-/// </summary>
 public sealed partial class ColorPickerControl : UserControl
 {
     public static readonly StyledProperty<Rgba> SelectedColorProperty =
@@ -27,6 +25,11 @@ public sealed partial class ColorPickerControl : UserControl
 
     private readonly ColorHistory _history = new();
     private readonly SwatchPalette _palette = new();
+    private bool _syncing;
+    private Rgba _previousColor;
+
+    private enum ColorTab { Rgb, Hsv, Hex }
+    private ColorTab _currentTab = ColorTab.Rgb;
 
     private readonly Border? _buttonSwatch;
     private readonly TextBlock? _buttonHex;
@@ -34,15 +37,22 @@ public sealed partial class ColorPickerControl : UserControl
     private readonly ColorPreviewSplit? _preview;
     private readonly SwatchStrip? _swatches;
     private readonly LabeledColorField? _hex;
-    private readonly LabeledColorField? _r;
-    private readonly LabeledColorField? _g;
-    private readonly LabeledColorField? _b;
-    private readonly LabeledColorField? _h;
-    private readonly LabeledColorField? _s;
-    private readonly LabeledColorField? _v;
 
-    private bool _syncing;
-    private Rgba _previousColor;
+    private readonly ColorSliderControl? _sliderR;
+    private readonly ColorSliderControl? _sliderG;
+    private readonly ColorSliderControl? _sliderB;
+    private readonly ColorSliderControl? _sliderA;
+    private readonly ColorSliderControl? _sliderH;
+    private readonly ColorSliderControl? _sliderS;
+    private readonly ColorSliderControl? _sliderV;
+    private readonly ColorSliderControl? _sliderA2;
+
+    private readonly ToggleButton? _tabRgb;
+    private readonly ToggleButton? _tabHsv;
+    private readonly ToggleButton? _tabHex;
+    private readonly StackPanel? _rgbPanel;
+    private readonly StackPanel? _hsvPanel;
+    private readonly StackPanel? _hexPanel;
 
     public ColorPickerControl()
     {
@@ -54,12 +64,22 @@ public sealed partial class ColorPickerControl : UserControl
         _preview = this.FindControl<ColorPreviewSplit>("PART_Preview");
         _swatches = this.FindControl<SwatchStrip>("PART_Swatches");
         _hex = this.FindControl<LabeledColorField>("PART_Hex");
-        _r = this.FindControl<LabeledColorField>("PART_R");
-        _g = this.FindControl<LabeledColorField>("PART_G");
-        _b = this.FindControl<LabeledColorField>("PART_B");
-        _h = this.FindControl<LabeledColorField>("PART_H");
-        _s = this.FindControl<LabeledColorField>("PART_S");
-        _v = this.FindControl<LabeledColorField>("PART_V");
+
+        _sliderR = this.FindControl<ColorSliderControl>("PART_SliderR");
+        _sliderG = this.FindControl<ColorSliderControl>("PART_SliderG");
+        _sliderB = this.FindControl<ColorSliderControl>("PART_SliderB");
+        _sliderA = this.FindControl<ColorSliderControl>("PART_SliderA");
+        _sliderH = this.FindControl<ColorSliderControl>("PART_SliderH");
+        _sliderS = this.FindControl<ColorSliderControl>("PART_SliderS");
+        _sliderV = this.FindControl<ColorSliderControl>("PART_SliderV");
+        _sliderA2 = this.FindControl<ColorSliderControl>("PART_SliderA2");
+
+        _tabRgb = this.FindControl<ToggleButton>("PART_TabRgb");
+        _tabHsv = this.FindControl<ToggleButton>("PART_TabHsv");
+        _tabHex = this.FindControl<ToggleButton>("PART_TabHex");
+        _rgbPanel = this.FindControl<StackPanel>("PART_RgbPanel");
+        _hsvPanel = this.FindControl<StackPanel>("PART_HsvPanel");
+        _hexPanel = this.FindControl<StackPanel>("PART_HexPanel");
 
         if (_wheel is not null)
         {
@@ -68,13 +88,17 @@ public sealed partial class ColorPickerControl : UserControl
             _wheel.DragEnded += OnWheelDragEnded;
         }
 
-        WireField(_hex, OnHexCommitted);
-        WireField(_r, _ => CommitRgb());
-        WireField(_g, _ => CommitRgb());
-        WireField(_b, _ => CommitRgb());
-        WireField(_h, _ => CommitHsv());
-        WireField(_s, _ => CommitHsv());
-        WireField(_v, _ => CommitHsv());
+        if (_hex is not null)
+            _hex.Committed += (_, text) => OnHexCommitted(text);
+
+        WireSlider(_sliderR, _ => CommitRgbFromSliders());
+        WireSlider(_sliderG, _ => CommitRgbFromSliders());
+        WireSlider(_sliderB, _ => CommitRgbFromSliders());
+        WireSlider(_sliderA, _ => CommitRgbFromSliders());
+        WireSlider(_sliderH, _ => CommitHsvFromSliders());
+        WireSlider(_sliderS, _ => CommitHsvFromSliders());
+        WireSlider(_sliderV, _ => CommitHsvFromSliders());
+        WireSlider(_sliderA2, _ => CommitHsvFromSliders());
 
         var addSwatch = this.FindControl<Button>("PART_AddSwatch");
         if (addSwatch is not null)
@@ -89,6 +113,7 @@ public sealed partial class ColorPickerControl : UserControl
 
         _previousColor = SelectedColor;
         ApplySelectedColor(SelectedColor, resetPrevious: true);
+        ActivateTab(ColorTab.Rgb);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -98,10 +123,43 @@ public sealed partial class ColorPickerControl : UserControl
             ApplySelectedColor(SelectedColor, resetPrevious: true);
     }
 
-    private static void WireField(LabeledColorField? field, Action<string> handler)
+    private void WireSlider(ColorSliderControl? slider, Action<double> handler)
     {
-        if (field is not null)
-            field.Committed += (_, text) => handler(text);
+        if (slider is null) return;
+        slider.ValueChanged += (_, value) => handler(value);
+        slider.DragStarted += OnSliderDragStarted;
+        slider.DragEnded += OnSliderDragEnded;
+    }
+
+    private void OnSliderDragStarted(object? sender, EventArgs e)
+    {
+        _previousColor = SelectedColor;
+        if (_preview is not null)
+            _preview.PreviousColor = _previousColor;
+    }
+
+    private void OnSliderDragEnded(object? sender, EventArgs e)
+    {
+        _history.Record(SelectedColor);
+        _swatches?.Refresh();
+    }
+
+    private void OnTabClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender == _tabRgb) ActivateTab(ColorTab.Rgb);
+        else if (sender == _tabHsv) ActivateTab(ColorTab.Hsv);
+        else if (sender == _tabHex) ActivateTab(ColorTab.Hex);
+    }
+
+    private void ActivateTab(ColorTab tab)
+    {
+        _currentTab = tab;
+        if (_tabRgb is not null) _tabRgb.IsChecked = tab == ColorTab.Rgb;
+        if (_tabHsv is not null) _tabHsv.IsChecked = tab == ColorTab.Hsv;
+        if (_tabHex is not null) _tabHex.IsChecked = tab == ColorTab.Hex;
+        if (_rgbPanel is not null) _rgbPanel.IsVisible = tab == ColorTab.Rgb;
+        if (_hsvPanel is not null) _hsvPanel.IsVisible = tab == ColorTab.Hsv;
+        if (_hexPanel is not null) _hexPanel.IsVisible = tab == ColorTab.Hex;
     }
 
     private void OnWheelDragStarted(object? sender, EventArgs e)
@@ -131,34 +189,24 @@ public sealed partial class ColorPickerControl : UserControl
             SyncFields(SelectedColor, CurrentHsv());
     }
 
-    private void CommitRgb()
+    private void CommitRgbFromSliders()
     {
-        if (!TryReadByte(_r, out byte red) ||
-            !TryReadByte(_g, out byte green) ||
-            !TryReadByte(_b, out byte blue))
-        {
-            SyncFields(SelectedColor, CurrentHsv());
-            return;
-        }
-
-        ApplyUserColor(new Rgba(red, green, blue, SelectedColor.A));
+        var color = new Rgba(
+            (byte)Math.Clamp(_sliderR?.Value ?? 0, 0, 255),
+            (byte)Math.Clamp(_sliderG?.Value ?? 0, 0, 255),
+            (byte)Math.Clamp(_sliderB?.Value ?? 0, 0, 255),
+            (byte)Math.Clamp(_sliderA?.Value ?? 255, 0, 255));
+        ApplyUserHsv(Hsv.FromRgba(color), color.A, updateWheel: true);
     }
 
-    private void CommitHsv()
+    private void CommitHsvFromSliders()
     {
-        if (!TryReadDouble(_h, out double hue) ||
-            !TryReadDouble(_s, out double saturationPercent) ||
-            !TryReadDouble(_v, out double valuePercent))
-        {
-            SyncFields(SelectedColor, CurrentHsv());
-            return;
-        }
-
         var hsv = new Hsv(
-            NormalizeHue(hue),
-            Math.Clamp(saturationPercent / 100.0, 0.0, 1.0),
-            Math.Clamp(valuePercent / 100.0, 0.0, 1.0));
-        ApplyUserHsv(hsv);
+            NormalizeHue(_sliderH?.Value ?? 0),
+            Math.Clamp((_sliderS?.Value ?? 0) / 100.0, 0.0, 1.0),
+            Math.Clamp((_sliderV?.Value ?? 0) / 100.0, 0.0, 1.0));
+        byte alpha = (byte)Math.Clamp(_sliderA2?.Value ?? 255, 0, 255);
+        ApplyUserHsv(hsv, alpha, updateWheel: true);
     }
 
     private void AddCurrentSwatch()
@@ -169,12 +217,12 @@ public sealed partial class ColorPickerControl : UserControl
 
     private void ApplyUserColor(Rgba color, bool updateWheel = true)
     {
-        ApplyUserHsv(Hsv.FromRgba(color), updateWheel);
+        ApplyUserHsv(Hsv.FromRgba(color), updateWheel: updateWheel);
     }
 
-    private void ApplyUserHsv(Hsv hsv, bool updateWheel = true)
+    private void ApplyUserHsv(Hsv hsv, byte? alphaOverride = null, bool updateWheel = true)
     {
-        var color = hsv.ToRgba(SelectedColor.A);
+        var color = hsv.ToRgba(alphaOverride ?? SelectedColor.A);
         SetSelectedColor(color);
         ApplySelectedColor(color, resetPrevious: false, hsvOverride: hsv, updateWheel: updateWheel);
         ColorChanged?.Invoke(this, color);
@@ -219,13 +267,22 @@ public sealed partial class ColorPickerControl : UserControl
 
     private void SyncFields(Rgba color, Hsv hsv)
     {
-        SetField(_hex, Hsv.ToHex(color));
-        SetField(_r, color.R.ToString(CultureInfo.InvariantCulture));
-        SetField(_g, color.G.ToString(CultureInfo.InvariantCulture));
-        SetField(_b, color.B.ToString(CultureInfo.InvariantCulture));
-        SetField(_h, Math.Round(hsv.H).ToString(CultureInfo.InvariantCulture));
-        SetField(_s, Math.Round(hsv.S * 100.0).ToString(CultureInfo.InvariantCulture));
-        SetField(_v, Math.Round(hsv.V * 100.0).ToString(CultureInfo.InvariantCulture));
+        SetSlider(_sliderR, color.R);
+        SetSlider(_sliderG, color.G);
+        SetSlider(_sliderB, color.B);
+        SetSlider(_sliderA, color.A);
+        SetSlider(_sliderH, Math.Round(hsv.H));
+        SetSlider(_sliderS, Math.Round(hsv.S * 100.0));
+        SetSlider(_sliderV, Math.Round(hsv.V * 100.0));
+        SetSlider(_sliderA2, color.A);
+        if (_hex is not null)
+            _hex.Text = Hsv.ToHex(color);
+    }
+
+    private static void SetSlider(ColorSliderControl? slider, double value)
+    {
+        if (slider is not null)
+            slider.Value = value;
     }
 
     private void SetSelectedColor(Rgba color)
@@ -242,26 +299,6 @@ public sealed partial class ColorPickerControl : UserControl
     }
 
     private Hsv CurrentHsv() => _wheel?.Color ?? Hsv.FromRgba(SelectedColor);
-
-    private static void SetField(LabeledColorField? field, string text)
-    {
-        if (field is not null)
-            field.Text = text;
-    }
-
-    private static bool TryReadByte(LabeledColorField? field, out byte value)
-    {
-        value = 0;
-        return field is not null &&
-               byte.TryParse(field.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
-    }
-
-    private static bool TryReadDouble(LabeledColorField? field, out double value)
-    {
-        value = 0.0;
-        return field is not null &&
-               double.TryParse(field.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
-    }
 
     private static double NormalizeHue(double hue)
     {
