@@ -4,7 +4,7 @@ namespace Prima.App;
 
 /// <summary>
 /// Raw P/Invoke bindings to the native <c>prima_c</c> shared library. Mirrors
-/// interop/include/prima_c/prima_c.h one-to-one. Internal on purpose — callers
+/// interop/include/prima_c/prima_c.h one-to-one. Internal on purpose - callers
 /// go through <see cref="Document"/>, never these directly.
 /// </summary>
 internal static unsafe partial class NativeMethods
@@ -49,4 +49,29 @@ internal static unsafe partial class NativeMethods
         nint renderer, nint canvas, byte* target, int width, int height, int stride,
         double panX, double panY, double zoom,
         byte bgR, byte bgG, byte bgB, byte bgA);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_color_rgba_to_hsv(
+        byte r, byte g, byte b, out double h, out double s, out double v);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_color_hsv_to_rgba(
+        double h, double s, double v, out byte r, out byte g, out byte b);
+
+    [LibraryImport(Lib)]
+    internal static partial nint prima_colorwheel_create(int outerSize, int ringThickness);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_colorwheel_destroy(nint wheel);
+
+    [LibraryImport(Lib)]
+    internal static partial void prima_colorwheel_set_hue(nint wheel, double hue);
+
+    [LibraryImport(Lib)]
+    internal static partial byte* prima_colorwheel_ring_pixels(
+        nint wheel, out int outW, out int outH);
+
+    [LibraryImport(Lib)]
+    internal static partial byte* prima_colorwheel_triangle_pixels(
+        nint wheel, out int outW, out int outH);
 }

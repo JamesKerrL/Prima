@@ -3,7 +3,7 @@
 
 /* C ABI for the Prima engine. This is the single, narrow boundary between the
  * native C++ core and the managed C# application layer. Keep it coarse-grained:
- * no per-pixel calls across this line — pixel data is shared via
+ * no per-pixel calls across this line - pixel data is shared via
  * prima_canvas_pixels(), not marshaled. */
 
 #include <stddef.h>
@@ -74,6 +74,38 @@ PRIMA_C_API void prima_render(PrimaRenderer* renderer, const PrimaCanvas* canvas
                               double pan_x, double pan_y, double zoom,
                               uint8_t bg_r, uint8_t bg_g, uint8_t bg_b,
                               uint8_t bg_a);
+
+/* --- Color -------------------------------------------------------------------
+ * HSV<->RGBA conversions and the hue-ring/SV-triangle bitmap renderer used by
+ * the color picker. Pixel buffers are shared (pointer into engine-owned
+ * memory), never copied across the boundary, same pattern as
+ * prima_canvas_pixels(). */
+
+PRIMA_C_API void prima_color_rgba_to_hsv(uint8_t r, uint8_t g, uint8_t b,
+                                         double* h, double* s, double* v);
+PRIMA_C_API void prima_color_hsv_to_rgba(double h, double s, double v,
+                                         uint8_t* r, uint8_t* g, uint8_t* b);
+
+/* Opaque handle to a native color wheel (ring + SV-triangle bitmaps). */
+typedef struct PrimaColorWheel PrimaColorWheel;
+
+/* Create a color wheel. Returns NULL on failure. */
+PRIMA_C_API PrimaColorWheel* prima_colorwheel_create(int outer_size,
+                                                     int ring_thickness);
+
+/* Destroy a color wheel. Safe to pass NULL. */
+PRIMA_C_API void prima_colorwheel_destroy(PrimaColorWheel* wheel);
+
+/* Regenerate the triangle bitmap for a new hue (degrees). */
+PRIMA_C_API void prima_colorwheel_set_hue(PrimaColorWheel* wheel, double hue);
+
+/* Pointers into the wheel's own RGBA8 pixel buffers (shared, not copied).
+ * out_w/out_h receive the buffer dimensions; either may be NULL. Valid until
+ * the wheel is destroyed. */
+PRIMA_C_API const uint8_t* prima_colorwheel_ring_pixels(PrimaColorWheel* wheel,
+                                                        int* out_w, int* out_h);
+PRIMA_C_API const uint8_t* prima_colorwheel_triangle_pixels(PrimaColorWheel* wheel,
+                                                            int* out_w, int* out_h);
 
 #ifdef __cplusplus
 }  /* extern "C" */

@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Prima.Desktop.Controls.ColorPreviewSplit"
+             Width="56" Height="32">
+  <Border BorderBrush="{StaticResource PrimaTextBrush}" BorderThickness="1">
+    <Grid ColumnDefinitions="*,*">
+      <Border x:Name="PART_Previous" Grid.Column="0" />
+      <Border x:Name="PART_Current" Grid.Column="1" />
+    </Grid>
+  </Border>
+</UserControl>

@@ -9,11 +9,17 @@
     <Color x:Key="PrimaSurface">#2A2A31</Color>
     <Color x:Key="PrimaAccent">#4C8DFF</Color>
     <Color x:Key="PrimaText">#EDEDF0</Color>
+    <!-- Stroke color for interactive drag handles drawn over the color wheel
+         (hue-ring marker, SV-triangle marker). White reads clearly over any
+         hue/saturation/value the handle sits on; a companion dark halo is drawn
+         under it in code for contrast on light fills. -->
+    <Color x:Key="PrimaHandleStroke">#FFFFFF</Color>
 
     <SolidColorBrush x:Key="PrimaBackgroundBrush" Color="{StaticResource PrimaBackground}" />
     <SolidColorBrush x:Key="PrimaSurfaceBrush" Color="{StaticResource PrimaSurface}" />
     <SolidColorBrush x:Key="PrimaAccentBrush" Color="{StaticResource PrimaAccent}" />
     <SolidColorBrush x:Key="PrimaTextBrush" Color="{StaticResource PrimaText}" />
+    <SolidColorBrush x:Key="PrimaHandleStrokeBrush" Color="{StaticResource PrimaHandleStroke}" />
 
     <!-- Spacing (as Thickness so it can drive Padding/Margin directly) -->
     <Thickness x:Key="PrimaPadMedium">8</Thickness>
@@ -37,16 +43,8 @@
     <Setter Property="Background" Value="{StaticResource PrimaAccentBrush}" />
   </Style>
 
-  <!-- Color picker: same light-vs-dark mismatch as Menu/MenuItem above. -->
-  <Style Selector="ColorPicker">
-    <Setter Property="Background" Value="{StaticResource PrimaSurfaceBrush}" />
+  <Style Selector="TextBox">
+    <Setter Property="Background" Value="{StaticResource PrimaBackgroundBrush}" />
     <Setter Property="Foreground" Value="{StaticResource PrimaTextBrush}" />
-  </Style>
-  <Style Selector="ColorView">
-    <Setter Property="Background" Value="{StaticResource PrimaSurfaceBrush}" />
-    <Setter Property="Foreground" Value="{StaticResource PrimaTextBrush}" />
-  </Style>
-  <Style Selector="FlyoutPresenter">
-    <Setter Property="Background" Value="{StaticResource PrimaSurfaceBrush}" />
   </Style>
 </Styles>

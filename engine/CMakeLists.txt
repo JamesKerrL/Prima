@@ -2,6 +2,8 @@
 add_library(prima_engine STATIC
     src/canvas.cpp
     src/software_renderer.cpp
+    src/color.cpp
+    src/color_wheel.cpp
 )
 
 target_include_directories(prima_engine PUBLIC include)

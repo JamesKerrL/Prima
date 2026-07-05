@@ -14,19 +14,22 @@
       </MenuItem>
     </Menu>
 
-    <Border DockPanel.Dock="Top"
-            Background="{StaticResource PrimaSurfaceBrush}"
-            Padding="{StaticResource PrimaPadMedium}">
-      <DockPanel LastChildFill="True">
+    <DockPanel LastChildFill="True">
+      <Border DockPanel.Dock="Right"
+              Background="{StaticResource PrimaSurfaceBrush}"
+              Padding="{StaticResource PrimaPadMedium}">
         <controls:ColorPickerControl x:Name="BrushColorPicker"
-                                      DockPanel.Dock="Right"
                                       ColorChanged="OnBrushColorChanged" />
-        <TextBlock Text="Prima — left-drag paints · wheel zooms · middle-drag or space+drag pans"
-                   Foreground="{StaticResource PrimaTextBrush}"
-                   VerticalAlignment="Center" />
-      </DockPanel>
-    </Border>
+      </Border>
 
-    <controls:CanvasControl x:Name="Canvas" />
+      <Grid>
+        <controls:CanvasControl x:Name="Canvas" />
+        <TextBlock Text="Prima - left-drag paints - wheel zooms - middle-drag or space+drag pans"
+                   Foreground="{StaticResource PrimaTextBrush}"
+                   HorizontalAlignment="Left"
+                   VerticalAlignment="Top"
+                   Margin="{StaticResource PrimaPadMedium}" />
+      </Grid>
+    </DockPanel>
   </DockPanel>
 </Window>

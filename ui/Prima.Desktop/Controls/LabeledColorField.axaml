@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Prima.Desktop.Controls.LabeledColorField">
+  <StackPanel Orientation="Horizontal" Spacing="4">
+    <TextBlock x:Name="PART_Label"
+               Foreground="{StaticResource PrimaTextBrush}"
+               VerticalAlignment="Center"
+               Width="16" />
+    <TextBox x:Name="PART_Input"
+             Width="52"
+             KeyDown="OnInputKeyDown"
+             LostFocus="OnInputLostFocus" />
+  </StackPanel>
+</UserControl>

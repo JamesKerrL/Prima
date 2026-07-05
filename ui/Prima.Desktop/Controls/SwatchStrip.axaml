@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Prima.Desktop.Controls.SwatchStrip">
+  <StackPanel Spacing="4">
+    <TextBlock Text="Swatches" Foreground="{StaticResource PrimaTextBrush}" FontSize="11" />
+    <WrapPanel x:Name="PART_Swatches" />
+    <TextBlock Text="History" Foreground="{StaticResource PrimaTextBrush}" FontSize="11" />
+    <WrapPanel x:Name="PART_History" />
+  </StackPanel>
+</UserControl>

@@ -9,6 +9,8 @@ FetchContent_MakeAvailable(googletest)
 add_executable(prima_engine_tests
     canvas_test.cpp
     renderer_test.cpp
+    color_test.cpp
+    color_wheel_test.cpp
 )
 target_link_libraries(prima_engine_tests PRIVATE prima_engine GTest::gtest_main)
 

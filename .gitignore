@@ -21,6 +21,7 @@ cmake_install.cmake
 *.lib
 
 # IDEs / editors
+.claude/
 .vscode/*
 !.vscode/tasks.json
 !.vscode/launch.json

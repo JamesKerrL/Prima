@@ -1,6 +1,58 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:colorPicker="using:Avalonia.Controls"
+             xmlns:controls="clr-namespace:Prima.Desktop.Controls"
              x:Class="Prima.Desktop.Controls.ColorPickerControl">
-  <colorPicker:ColorPicker x:Name="PART_ColorPicker" ColorChanged="OnLibraryColorChanged" />
+  <Border Background="{StaticResource PrimaSurfaceBrush}"
+          Padding="{StaticResource PrimaPadMedium}"
+          Width="284">
+    <StackPanel Spacing="8">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock x:Name="PART_ButtonHex"
+                   VerticalAlignment="Center"
+                   Foreground="{StaticResource PrimaTextBrush}"
+                   FontSize="12" />
+        <Border x:Name="PART_ButtonSwatch"
+                Grid.Column="1"
+                Margin="8,0,0,0"
+                Width="36"
+                Height="22"
+                BorderBrush="{StaticResource PrimaTextBrush}"
+                BorderThickness="1" />
+      </Grid>
+
+      <controls:HueRingTriangleControl x:Name="PART_Wheel"
+                                       Width="240"
+                                       Height="240"
+                                       HorizontalAlignment="Center" />
+
+      <Grid ColumnDefinitions="Auto,*">
+        <controls:ColorPreviewSplit x:Name="PART_Preview"
+                                    Grid.Column="0"
+                                    VerticalAlignment="Top" />
+        <WrapPanel x:Name="PART_Fields"
+                   Grid.Column="1"
+                   Margin="8,0,0,0"
+                   ItemHeight="28"
+                   ItemWidth="86">
+          <controls:LabeledColorField x:Name="PART_Hex" Label="#" />
+          <controls:LabeledColorField x:Name="PART_R" Label="R" />
+          <controls:LabeledColorField x:Name="PART_G" Label="G" />
+          <controls:LabeledColorField x:Name="PART_B" Label="B" />
+          <controls:LabeledColorField x:Name="PART_H" Label="H" />
+          <controls:LabeledColorField x:Name="PART_S" Label="S" />
+          <controls:LabeledColorField x:Name="PART_V" Label="V" />
+        </WrapPanel>
+      </Grid>
+
+      <Button x:Name="PART_AddSwatch"
+              HorizontalAlignment="Left"
+              Padding="8,4"
+              Background="{StaticResource PrimaBackgroundBrush}"
+              Foreground="{StaticResource PrimaTextBrush}"
+              BorderBrush="{StaticResource PrimaTextBrush}"
+              Content="Add swatch" />
+
+      <controls:SwatchStrip x:Name="PART_Swatches" />
+    </StackPanel>
+  </Border>
 </UserControl>
