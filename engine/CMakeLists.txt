@@ -1,6 +1,7 @@
 # prima_engine: the pure C++ core (STL only). No UI, no interop concerns.
 add_library(prima_engine STATIC
     src/canvas.cpp
+    src/flood_fill.cpp
     src/software_renderer.cpp
     src/color.cpp
     src/color_wheel.cpp

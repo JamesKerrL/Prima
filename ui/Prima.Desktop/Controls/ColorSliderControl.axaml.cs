@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 
 namespace Prima.Desktop.Controls;
 
@@ -21,6 +22,12 @@ public sealed partial class ColorSliderControl : UserControl
 
     public static readonly StyledProperty<double> MaximumProperty =
         AvaloniaProperty.Register<ColorSliderControl, double>(nameof(Maximum), 255.0);
+
+    /// <summary>Brush painted along the slider track. The color picker sets this
+    /// to a gradient of the channel this slider drives so the rail shows the
+    /// actual colors it selects between.</summary>
+    public static readonly StyledProperty<IBrush?> TrackBrushProperty =
+        AvaloniaProperty.Register<ColorSliderControl, IBrush?>(nameof(TrackBrush));
 
     public event EventHandler<double>? ValueChanged;
     public event EventHandler? DragStarted;
@@ -50,6 +57,12 @@ public sealed partial class ColorSliderControl : UserControl
         set => SetValue(MaximumProperty, value);
     }
 
+    public IBrush? TrackBrush
+    {
+        get => GetValue(TrackBrushProperty);
+        set => SetValue(TrackBrushProperty, value);
+    }
+
     private readonly TextBlock? _label;
     private readonly TextBox? _input;
     private readonly Slider? _slider;
@@ -68,6 +81,7 @@ public sealed partial class ColorSliderControl : UserControl
             _slider.PointerReleased += OnSliderPointerReleased;
             _slider.Minimum = Minimum;
             _slider.Maximum = Maximum;
+            _slider.Background = TrackBrush;
         }
     }
 
@@ -90,6 +104,11 @@ public sealed partial class ColorSliderControl : UserControl
                 _slider.Minimum = Minimum;
                 _slider.Maximum = Maximum;
             }
+        }
+        else if (change.Property == TrackBrushProperty)
+        {
+            if (_slider is not null)
+                _slider.Background = TrackBrush;
         }
     }
 

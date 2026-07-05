@@ -6,6 +6,7 @@
 #include "prima/brush.h"
 #include "prima/canvas.h"
 #include "prima/color.h"
+#include "prima/flood_fill.h"
 #include "prima/color_wheel.h"
 #include "prima/image_io.h"
 #include "prima/renderer.h"
@@ -85,6 +86,18 @@ void prima_canvas_brush_dab(PrimaCanvas* canvas, int cx, int cy, int radius,
                             uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     if (!canvas) return;
     as_canvas(canvas)->brushDab(cx, cy, radius, Rgba{r, g, b, a});
+}
+
+void prima_canvas_flood_fill(PrimaCanvas* canvas, int seed_x, int seed_y,
+                             uint8_t r, uint8_t g, uint8_t b, uint8_t a,
+                             int tolerance, PrimaRect* out_dirty) {
+    if (!canvas) {
+        write_rect(out_dirty, RectI{});
+        return;
+    }
+    RectI dirty =
+        as_canvas(canvas)->floodFill(seed_x, seed_y, Rgba{r, g, b, a}, tolerance);
+    write_rect(out_dirty, dirty);
 }
 
 uint8_t* prima_canvas_pixels(PrimaCanvas* canvas, size_t* out_len,
@@ -245,6 +258,12 @@ void prima_stroke_add(PrimaBrushEngine* engine, const PrimaInputSample* samples,
 void prima_stroke_end(PrimaBrushEngine* engine, PrimaRect* out_dirty) {
     if (!engine) return;
     write_rect(out_dirty, as_brush_engine(engine)->endStroke());
+}
+
+int prima_brush_engine_read_baseline_region(PrimaBrushEngine* engine, int x,
+                                            int y, int w, int h, uint8_t* dst) {
+    if (!engine || !dst) return -1;
+    return as_brush_engine(engine)->readBaselineRegion(x, y, w, h, dst) ? 0 : -1;
 }
 
 }  // extern "C"

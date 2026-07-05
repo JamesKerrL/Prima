@@ -17,6 +17,20 @@
                    VerticalAlignment="Center"
                    Foreground="{StaticResource PrimaTextBrush}" />
       </RadioButton>
+      <RadioButton x:Name="PART_FloodFill"
+                   GroupName="ToolGroup"
+                   Width="36" Height="36"
+                   Padding="0"
+                   ToolTip.Tip="Fill">
+        <!-- Paint-bucket icon: a vector Path so it stays crisp and theme-driven
+             (there's no reliable bucket glyph in the UI font). -->
+        <Path Data="M12,5 C15.3,5 18,5.9 18,7 L16,20 C16,21.4 14.9,22 13.5,22 L10.5,22 C9.1,22 8,21.4 8,20 L6,7 C6,5.9 8.7,5 12,5 Z M20,10 C22,12.5 22,14.5 20,15.5 C18,14.5 18,12.5 20,10 Z"
+              Fill="{StaticResource PrimaTextBrush}"
+              Stretch="Uniform"
+              Width="18" Height="18"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center" />
+      </RadioButton>
     </StackPanel>
   </Border>
 </UserControl>

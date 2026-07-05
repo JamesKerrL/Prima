@@ -4,7 +4,7 @@ namespace Prima.App;
 
 /// <summary>
 /// User-curated color swatches, in the order the user added them (unlike
-/// <see cref="ColorHistory"/>, this is not MRU-ordered and has no cap - the
+/// <see cref="RecentColors"/>, this is not MRU-ordered and has no cap - the
 /// user manages it explicitly).
 /// </summary>
 public sealed class SwatchPalette

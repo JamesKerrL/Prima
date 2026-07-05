@@ -13,7 +13,7 @@ public sealed partial class SwatchStrip : UserControl
     private const double SwatchSize = 18;
 
     public SwatchPalette Palette { get; set; } = new();
-    public ColorHistory History { get; set; } = new();
+    public RecentColors RecentColors { get; set; } = new();
 
     public event EventHandler<Rgba>? ColorSelected;
     public event EventHandler? SaveRequested;
@@ -23,13 +23,13 @@ public sealed partial class SwatchStrip : UserControl
     public IReadOnlyList<string> RecentPaths { get; set; } = Array.Empty<string>();
 
     private readonly WrapPanel? _swatches;
-    private readonly WrapPanel? _history;
+    private readonly WrapPanel? _recentColors;
 
     public SwatchStrip()
     {
         InitializeComponent();
         _swatches = this.FindControl<WrapPanel>("PART_Swatches");
-        _history = this.FindControl<WrapPanel>("PART_History");
+        _recentColors = this.FindControl<WrapPanel>("PART_RecentColors");
     }
 
     private void OnPaletteMenuClick(object? sender, RoutedEventArgs e)
@@ -62,7 +62,7 @@ public sealed partial class SwatchStrip : UserControl
     public void Refresh()
     {
         Rebuild(_swatches, Palette.Swatches, showDelete: true);
-        Rebuild(_history, History.Colors, showDelete: false);
+        Rebuild(_recentColors, RecentColors.Colors, showDelete: false);
     }
 
     private void Rebuild(WrapPanel? panel, IReadOnlyList<Rgba> colors, bool showDelete)

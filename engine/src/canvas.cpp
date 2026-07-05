@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "prima/flood_fill.h"
+
 namespace prima {
 
 namespace {
@@ -45,6 +47,11 @@ void Canvas::brushDab(int cx, int cy, int radius, Rgba color) {
             pixels_[i + 3] = color.a;
         }
     }
+}
+
+RectI Canvas::floodFill(int seedX, int seedY, Rgba newColor, int tolerance) {
+    return prima::floodFill(pixels_.data(), width_, height_, stride(), seedX,
+                            seedY, newColor, tolerance);
 }
 
 }  // namespace prima

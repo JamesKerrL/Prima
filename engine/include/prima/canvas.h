@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "prima/rect.h"
+
 namespace prima {
 
 // A packed RGBA8 color, one byte per channel.
@@ -37,6 +39,11 @@ public:
 
     // Stamp one filled, bounds-clamped circular brush dab centered at (cx, cy).
     void brushDab(int cx, int cy, int radius, Rgba color);
+
+    // Contiguous 4-connected flood fill from (seedX, seedY) with `newColor`;
+    // matches pixels within `tolerance` per channel of the seed color (0 =
+    // exact). Returns the bounding rect of changed pixels (empty if none).
+    RectI floodFill(int seedX, int seedY, Rgba newColor, int tolerance);
 
 private:
     int width_;

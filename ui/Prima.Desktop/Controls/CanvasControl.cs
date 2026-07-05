@@ -45,6 +45,7 @@ public sealed class CanvasControl : Control, IDisposable
     private BrushParams _brushParams = BrushParams.Default(new Rgba(40, 90, 220, 255), 12);
     private InputSample[] _sampleBuffer = new InputSample[64];
     private DirtyRect _pendingDirty;
+    private DirtyRect _strokeDirty;
 
     /// <summary>Fill color for target area outside the canvas.</summary>
     public Rgba Background { get; set; } = new(30, 30, 35, 255);
@@ -268,11 +269,30 @@ public sealed class CanvasControl : Control, IDisposable
             _brushParams.FlowPressureGamma = 1f;
 
             _brushEngine.BeginStroke(_document, _brushParams);
+            _strokeDirty = default;
 
-            _pendingDirty = _pendingDirty.Union(
-                _brushEngine.AddSamples(new[] { sample }));
+            var dirty = _brushEngine.AddSamples(new[] { sample });
+            _strokeDirty = _strokeDirty.Union(dirty);
+            _pendingDirty = _pendingDirty.Union(dirty);
 
             InvalidateStroke();
+        }
+        else if (props.IsLeftButtonPressed && _document is not null &&
+                 CurrentTool == ToolType.FloodFill)
+        {
+            _autoFit = false;
+
+            // Single click, no capture/drag: fill the region under the cursor.
+            int cx = (int)Math.Floor(_viewport.TargetToCanvasX(pos.X));
+            int cy = (int)Math.Floor(_viewport.TargetToCanvasY(pos.Y));
+
+            var dirty = _document.FloodFill(cx, cy, BrushColor, 0);
+            if (!dirty.IsEmpty)
+            {
+                _pendingDirty = _pendingDirty.Union(dirty);
+                InvalidateStroke();
+            }
+            e.Handled = true;
         }
     }
 
@@ -308,9 +328,10 @@ public sealed class CanvasControl : Control, IDisposable
                 _sampleBuffer[i] = SampleFromPoint(pt.Position, pressure);
             }
 
-            _pendingDirty = _pendingDirty.Union(
-                _brushEngine.AddSamples(new ReadOnlySpan<InputSample>(
-                    _sampleBuffer, 0, count)));
+            var dirty = _brushEngine.AddSamples(new ReadOnlySpan<InputSample>(
+                _sampleBuffer, 0, count));
+            _strokeDirty = _strokeDirty.Union(dirty);
+            _pendingDirty = _pendingDirty.Union(dirty);
 
             InvalidateStroke();
         }
@@ -328,7 +349,13 @@ public sealed class CanvasControl : Control, IDisposable
             _stroking = false;
             e.Pointer.Capture(null);
 
-            _pendingDirty = _pendingDirty.Union(_brushEngine.EndStroke());
+            var dirty = _brushEngine.EndStroke();
+            _strokeDirty = _strokeDirty.Union(dirty);
+            _pendingDirty = _pendingDirty.Union(dirty);
+
+            _document!.PushStrokeEdit(_brushEngine, _strokeDirty);
+            _strokeDirty = default;
+
             InvalidateStroke();
         }
     }
@@ -352,10 +379,43 @@ public sealed class CanvasControl : Control, IDisposable
         e.Handled = true;
     }
 
+    /// <summary>Undo the last edit and re-render the affected region.</summary>
+    public void Undo()
+    {
+        if (_document is null) return;
+        _pendingDirty = _pendingDirty.Union(_document.Undo());
+        InvalidateStroke();
+    }
+
+    /// <summary>Redo the last undone edit and re-render the affected region.</summary>
+    public void Redo()
+    {
+        if (_document is null) return;
+        _pendingDirty = _pendingDirty.Union(_document.Redo());
+        InvalidateStroke();
+    }
+
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
         if (e.Key == Key.Space) _spaceHeld = true;
+
+        bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        if (ctrl && e.Key == Key.Z && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            Redo();
+            e.Handled = true;
+        }
+        else if (ctrl && e.Key == Key.Z)
+        {
+            Undo();
+            e.Handled = true;
+        }
+        else if (ctrl && e.Key == Key.Y)
+        {
+            Redo();
+            e.Handled = true;
+        }
     }
 
     protected override void OnKeyUp(KeyEventArgs e)

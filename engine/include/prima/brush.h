@@ -51,6 +51,12 @@ public:
     RectI endStroke();
     bool strokeActive() const;
 
+    // Copy a packed RGBA8 region out of the stroke's frozen "before" snapshot
+    // (baseline_), for undo history. Valid once a stroke has begun and until the
+    // next beginStroke. Returns false if no baseline exists yet or the rect
+    // falls outside [0, baselineWidth_) x [0, baselineHeight_).
+    bool readBaselineRegion(int x, int y, int w, int h, uint8_t* dst) const;
+
 private:
     RectI stampDab(const DabPoint& dab);   // DabSource::stamp + recomposite
     void recomposite(const RectI& r);      // baseline ⊕ coverage·opacity → canvas
@@ -60,6 +66,8 @@ private:
     Canvas* canvas_ = nullptr;             // valid only between begin/end
     BrushParams params_;
     std::vector<uint8_t> baseline_;        // RGBA8 canvas snapshot at stroke start
+    int baselineWidth_ = 0;
+    int baselineHeight_ = 0;
     std::vector<uint16_t> coverage_;       // accumulated stroke coverage
     RectI strokeDirty_{};                  // union of all dabs → lazy coverage clear
 };

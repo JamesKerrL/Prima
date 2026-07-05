@@ -53,6 +53,27 @@ public sealed unsafe class BrushEngine : IDisposable
         return new DirtyRect(dirty.X, dirty.Y, dirty.Width, dirty.Height);
     }
 
+    /// <summary>
+    /// Read a packed RGBA8 region out of the current/most recent stroke's
+    /// frozen "before" snapshot — the pre-stroke pixels, for undo history.
+    /// </summary>
+    public byte[] ReadBaselineRegion(DirtyRect region)
+    {
+        ThrowIfDisposed();
+        if (region.IsEmpty) return Array.Empty<byte>();
+
+        var buffer = new byte[checked(region.Width * region.Height * 4)];
+        fixed (byte* p = buffer)
+        {
+            int result = NativeMethods.prima_brush_engine_read_baseline_region(
+                _handle, region.X, region.Y, region.Width, region.Height, p);
+            if (result != 0)
+                throw new InvalidOperationException(
+                    "Failed to read stroke baseline region (no active baseline or rect out of bounds).");
+        }
+        return buffer;
+    }
+
     private void ThrowIfDisposed()
     {
         if (_handle == nint.Zero)

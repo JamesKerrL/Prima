@@ -35,6 +35,11 @@ internal static unsafe partial class NativeMethods
         nint canvas, int cx, int cy, int radius, byte r, byte g, byte b, byte a);
 
     [LibraryImport(Lib)]
+    internal static partial void prima_canvas_flood_fill(
+        nint canvas, int seedX, int seedY, byte r, byte g, byte b, byte a,
+        int tolerance, out PrimaRect outDirty);
+
+    [LibraryImport(Lib)]
     internal static partial byte* prima_canvas_pixels(
         nint canvas, out nuint outLen, out int outStride);
 
@@ -123,4 +128,8 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Lib)]
     internal static partial void prima_stroke_end(
         nint engine, out PrimaRect outDirty);
+
+    [LibraryImport(Lib)]
+    internal static partial int prima_brush_engine_read_baseline_region(
+        nint engine, int x, int y, int w, int h, byte* dst);
 }

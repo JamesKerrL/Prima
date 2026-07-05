@@ -12,6 +12,7 @@ endif()
 
 add_executable(prima_engine_tests
     canvas_test.cpp
+    flood_fill_test.cpp
     renderer_test.cpp
     color_test.cpp
     color_wheel_test.cpp

@@ -13,8 +13,10 @@ Check off items as they land: `- [x] done thing`.
 - [x] Real brush engine: size, hardness, opacity, spacing along a stroke (not
       just one dab) — analytic AA, pressure→size/flow, coverage buffer with
       flow/opacity semantics, dirty-rect partial invalidation
+- [x] Flood fill (paint bucket) tool — isolated 4-connected engine algorithm
+      with per-channel tolerance, undoable via `RegionEdit`, toolbar bucket icon
 - [ ] Layers: add/remove/reorder, per-layer opacity, blend modes
-- [ ] Undo/redo (command pattern in the app layer)
+- [x] Undo/redo (command pattern in the app layer)
 - [x] Canvas pan/zoom (delivered via the render-backend work below)
 - [ ] Color picker + palette (use open source color library if necessary)
 

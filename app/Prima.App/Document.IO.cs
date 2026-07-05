@@ -33,6 +33,7 @@ public sealed unsafe partial class Document
                 throw new InvalidOperationException(
                     $"Failed to save PNG: {path}");
         }
+        MarkSaved();
     }
 
     /// <summary>
@@ -81,5 +82,6 @@ public sealed unsafe partial class Document
                 throw new InvalidOperationException(
                     $"Failed to save JPEG: {path}");
         }
+        MarkSaved();
     }
 }

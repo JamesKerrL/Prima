@@ -324,6 +324,69 @@ TEST(BrushEngineTest, IdenticalStrokesOnFreshCanvasesProduceIdenticalPixels) {
     EXPECT_EQ(std::memcmp(canvasA.pixels(), canvasB.pixels(), canvasA.byteSize()), 0);
 }
 
+// 7. Baseline region readback (undo support).
+TEST(BrushEngineTest, ReadBaselineRegionReturnsPreStrokePixels) {
+    Canvas canvas(64, 64);
+    canvas.clear(Rgba{5, 6, 7, 8});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 10;
+    p.hardness = 0.8f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{255, 0, 0, 255};
+
+    engine.beginStroke(canvas, p);
+    InputSample s{32.f, 32.f, 1.f};
+    RectI dirty = engine.addSamples(&s, 1);
+    engine.endStroke();
+
+    ASSERT_FALSE(dirty.empty());
+    // The stroke changed the (fully-covered) dab center on the live canvas...
+    EXPECT_EQ(readPixel(canvas, 32, 32).r, 255);
+
+    // ...but the baseline region still holds the original pre-stroke color.
+    std::vector<uint8_t> region(static_cast<std::size_t>(dirty.width) * dirty.height * 4);
+    ASSERT_TRUE(engine.readBaselineRegion(dirty.x, dirty.y, dirty.width,
+                                          dirty.height, region.data()));
+    for (std::size_t i = 0; i < region.size(); i += 4) {
+        EXPECT_EQ(region[i + 0], 5);
+        EXPECT_EQ(region[i + 1], 6);
+        EXPECT_EQ(region[i + 2], 7);
+        EXPECT_EQ(region[i + 3], 8);
+    }
+}
+
+TEST(BrushEngineTest, ReadBaselineRegionRejectsOutOfBoundsRect) {
+    Canvas canvas(16, 16);
+    canvas.clear(Rgba{0, 0, 0, 0});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 5;
+    p.hardness = 1;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{1, 2, 3, 4};
+
+    engine.beginStroke(canvas, p);
+    InputSample s{8.f, 8.f, 1.f};
+    engine.addSamples(&s, 1);
+    engine.endStroke();
+
+    std::vector<uint8_t> region(4);
+    EXPECT_FALSE(engine.readBaselineRegion(-1, 0, 1, 1, region.data()));
+    EXPECT_FALSE(engine.readBaselineRegion(0, 0, 100, 1, region.data()));
+    EXPECT_FALSE(engine.readBaselineRegion(0, 0, 1, 100, region.data()));
+}
+
+TEST(BrushEngineTest, ReadBaselineRegionFailsBeforeAnyStroke) {
+    BrushEngine engine;
+    std::vector<uint8_t> region(4);
+    EXPECT_FALSE(engine.readBaselineRegion(0, 0, 1, 1, region.data()));
+}
+
 TEST(BrushEngineTest, BatchingSamplesIntoMultipleAddSamplesCallsMatchesSingleCall) {
     BrushParams p;
     p.radius = 10;

@@ -13,6 +13,7 @@ public partial class MainWindow : Window
 {
     private const int CanvasWidth = 640;
     private const int CanvasHeight = 480;
+    private const string BaseTitle = "Prima";
 
     private SettingsWindow? _settingsWindow;
     private WindowState _preFullScreenState = WindowState.Maximized;
@@ -25,9 +26,38 @@ public partial class MainWindow : Window
 
         var doc = new Document(CanvasWidth, CanvasHeight);
         doc.Clear(Rgba.White);
+        doc.History.Clear(); // the initial fill is setup, not an undoable edit
+
+        SetDocument(doc);
+        BrushColorPicker.SelectedColor = Canvas.BrushColor;
+    }
+
+    private void SetDocument(Document doc)
+    {
+        if (Canvas.Document is { } old)
+            old.History.Changed -= OnHistoryChanged;
 
         Canvas.Document = doc;
-        BrushColorPicker.SelectedColor = Canvas.BrushColor;
+        doc.History.Changed += OnHistoryChanged;
+        UpdateTitle();
+    }
+
+    private void OnHistoryChanged() => UpdateTitle();
+
+    private void UpdateTitle()
+    {
+        bool modified = Canvas.Document?.IsModified ?? false;
+        Title = modified ? $"{BaseTitle} •" : BaseTitle;
+    }
+
+    /// <summary>Prompts to discard unsaved changes if the current document is modified.
+    /// Returns true if it's safe to proceed (no unsaved changes, or the user confirmed discard).</summary>
+    private async System.Threading.Tasks.Task<bool> ConfirmDiscardIfModifiedAsync()
+    {
+        if (Canvas.Document is not { IsModified: true }) return true;
+        return await ConfirmDialog.Show(
+            this, "Unsaved Changes",
+            "This document has unsaved changes. Discard them?");
     }
 
     private void OnBrushColorChanged(object? sender, Rgba color) => Canvas.BrushColor = color;
@@ -36,6 +66,8 @@ public partial class MainWindow : Window
 
     private async void OnOpenFile(object? sender, RoutedEventArgs e)
     {
+        if (!await ConfirmDiscardIfModifiedAsync()) return;
+
         var dlg = new OpenFileDialog
         {
             Title = "Open Image",
@@ -60,9 +92,14 @@ public partial class MainWindow : Window
 
         var doc = Document.LoadFromFile(result[0]);
         if (doc is null) return;
+        doc.MarkSaved(); // freshly loaded from disk — starts clean, empty history
 
-        Canvas.Document = doc;
+        SetDocument(doc);
     }
+
+    private void OnUndoClick(object? sender, RoutedEventArgs e) => Canvas.Undo();
+
+    private void OnRedoClick(object? sender, RoutedEventArgs e) => Canvas.Redo();
 
     private async void OnExportPng(object? sender, RoutedEventArgs e)
     {
@@ -137,6 +174,26 @@ public partial class MainWindow : Window
             _preFullScreenState = WindowState;
             WindowState = WindowState.FullScreen;
         }
+    }
+
+    private bool _closeConfirmed;
+
+    protected override async void OnClosing(WindowClosingEventArgs e)
+    {
+        if (!_closeConfirmed && Canvas.Document is { IsModified: true })
+        {
+            e.Cancel = true;
+            base.OnClosing(e);
+
+            if (await ConfirmDiscardIfModifiedAsync())
+            {
+                _closeConfirmed = true;
+                Close();
+            }
+            return;
+        }
+
+        base.OnClosing(e);
     }
 
     protected override void OnClosed(EventArgs e)

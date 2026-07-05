@@ -13,9 +13,59 @@
              HorizontalAlignment="Right"
              KeyDown="OnInputKeyDown"
              LostFocus="OnInputLostFocus" />
+    <!-- The track rail is painted with the control's TrackBrush (set by the
+         color picker to a gradient of the channel this slider drives), so the
+         slider always shows the actual colors it selects between. -->
     <Slider x:Name="PART_Slider"
             Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
             Height="24"
-            ValueChanged="OnSliderValueChanged" />
+            ValueChanged="OnSliderValueChanged">
+      <Slider.Template>
+        <ControlTemplate>
+          <Grid>
+            <Border Height="12"
+                    VerticalAlignment="Center"
+                    CornerRadius="6"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{StaticResource PrimaTextBrush}"
+                    BorderThickness="1" />
+            <Track Name="PART_Track"
+                   Minimum="{TemplateBinding Minimum}"
+                   Maximum="{TemplateBinding Maximum}"
+                   Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                   Orientation="Horizontal">
+              <Track.DecreaseButton>
+                <RepeatButton Name="PART_DecreaseButton" Focusable="False" Background="Transparent">
+                  <RepeatButton.Template>
+                    <ControlTemplate>
+                      <Border Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                  </RepeatButton.Template>
+                </RepeatButton>
+              </Track.DecreaseButton>
+              <Thumb Name="thumb" Width="16" Height="16" Padding="0">
+                <Thumb.Template>
+                  <ControlTemplate>
+                    <Ellipse Width="16" Height="16"
+                             Fill="White"
+                             Stroke="#333333"
+                             StrokeThickness="1.5" />
+                  </ControlTemplate>
+                </Thumb.Template>
+              </Thumb>
+              <Track.IncreaseButton>
+                <RepeatButton Name="PART_IncreaseButton" Focusable="False" Background="Transparent">
+                  <RepeatButton.Template>
+                    <ControlTemplate>
+                      <Border Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                  </RepeatButton.Template>
+                </RepeatButton>
+              </Track.IncreaseButton>
+            </Track>
+          </Grid>
+        </ControlTemplate>
+      </Slider.Template>
+    </Slider>
   </Grid>
 </UserControl>

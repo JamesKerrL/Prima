@@ -78,6 +78,8 @@ void BrushEngine::beginStroke(Canvas& canvas, const BrushParams& params) {
     // Snapshot the canvas — the frozen "before" image every dab composites
     // against (prevents self-overlap double-darkening).
     std::memcpy(baseline_.data(), canvas.pixels(), byteSize);
+    baselineWidth_ = canvas.width();
+    baselineHeight_ = canvas.height();
 
     // Zero the coverage buffer only over the previous stroke's dirty rect (the
     // buffer starts zero-initialized, so the first-ever stroke clears nothing).
@@ -169,6 +171,24 @@ void BrushEngine::recomposite(const RectI& r) {
             dst[b + 3] = out.a;
         }
     }
+}
+
+bool BrushEngine::readBaselineRegion(int x, int y, int w, int h,
+                                     uint8_t* dst) const {
+    if (baseline_.empty() || w <= 0 || h <= 0 || dst == nullptr) return false;
+    if (x < 0 || y < 0 || x + w > baselineWidth_ || y + h > baselineHeight_) {
+        return false;
+    }
+
+    const uint8_t* src = baseline_.data();
+    const std::size_t rowBytes = static_cast<std::size_t>(w) * 4;
+    for (int row = 0; row < h; ++row) {
+        const std::size_t srcOffset =
+            (static_cast<std::size_t>(y + row) * baselineWidth_ + x) * 4;
+        std::memcpy(dst + static_cast<std::size_t>(row) * rowBytes,
+                    src + srcOffset, rowBytes);
+    }
+    return true;
 }
 
 }  // namespace prima

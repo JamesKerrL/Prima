@@ -25,7 +25,7 @@ public sealed partial class ColorPickerControl : UserControl
         set => SetValue(SelectedColorProperty, value);
     }
 
-    private readonly ColorHistory _history = new();
+    private readonly RecentColors _recentColors = new();
     private SwatchPalette _palette = new();
     private RecentPalettes _recentPalettes = new();
     private bool _syncing;
@@ -119,7 +119,7 @@ public sealed partial class ColorPickerControl : UserControl
         if (_swatches is not null)
         {
             _swatches.Palette = _palette;
-            _swatches.History = _history;
+            _swatches.RecentColors = _recentColors;
             _swatches.ColorSelected += (_, color) => ApplyUserColor(color);
             _swatches.SaveRequested += OnSavePalette;
             _swatches.LoadRequested += OnLoadPalette;
@@ -159,7 +159,7 @@ public sealed partial class ColorPickerControl : UserControl
 
     private void OnSliderDragEnded(object? sender, EventArgs e)
     {
-        _history.Record(SelectedColor);
+        _recentColors.Record(SelectedColor);
         _swatches?.Refresh();
     }
 
@@ -190,7 +190,7 @@ public sealed partial class ColorPickerControl : UserControl
 
     private void OnWheelDragEnded(object? sender, EventArgs e)
     {
-        _history.Record(SelectedColor);
+        _recentColors.Record(SelectedColor);
         _swatches?.Refresh();
     }
 
@@ -251,7 +251,7 @@ public sealed partial class ColorPickerControl : UserControl
     public void LoadPalette(SwatchPalette palette)
     {
         _palette = palette;
-        _history.Clear();
+        _recentColors.Clear();
         if (_swatches is not null)
         {
             _swatches.Palette = palette;
@@ -396,8 +396,61 @@ public sealed partial class ColorPickerControl : UserControl
         SetSlider(_sliderS, Math.Round(hsv.S * 100.0));
         SetSlider(_sliderV, Math.Round(hsv.V * 100.0));
         SetSlider(_sliderA2, color.A);
+        SyncTrackGradients(color, hsv);
         if (_hex is not null)
             _hex.Text = Hsv.ToHex(color);
+    }
+
+    // Paint each slider's rail with a gradient of the channel it drives, holding
+    // the other channels fixed at the current color — so the rail previews the
+    // exact colors the slider selects between.
+    private void SyncTrackGradients(Rgba color, Hsv hsv)
+    {
+        byte a = color.A;
+        SetTrack(_sliderR, new Rgba(0, color.G, color.B, a), new Rgba(255, color.G, color.B, a));
+        SetTrack(_sliderG, new Rgba(color.R, 0, color.B, a), new Rgba(color.R, 255, color.B, a));
+        SetTrack(_sliderB, new Rgba(color.R, color.G, 0, a), new Rgba(color.R, color.G, 255, a));
+        SetTrack(_sliderA, new Rgba(color.R, color.G, color.B, 0), new Rgba(color.R, color.G, color.B, 255));
+
+        if (_sliderH is not null)
+            _sliderH.TrackBrush = HueGradient(hsv.V, a);
+        SetTrack(_sliderS,
+            new Hsv(hsv.H, 0.0, hsv.V).ToRgba(a),
+            new Hsv(hsv.H, 1.0, hsv.V).ToRgba(a));
+        SetTrack(_sliderV,
+            new Hsv(hsv.H, hsv.S, 0.0).ToRgba(a),
+            new Hsv(hsv.H, hsv.S, 1.0).ToRgba(a));
+        SetTrack(_sliderA2, new Rgba(color.R, color.G, color.B, 0), new Rgba(color.R, color.G, color.B, 255));
+    }
+
+    private static void SetTrack(ColorSliderControl? slider, Rgba start, Rgba end)
+    {
+        if (slider is not null)
+            slider.TrackBrush = Gradient((0.0, start), (1.0, end));
+    }
+
+    // A full-saturation rainbow across the hue range, at the current value.
+    private static LinearGradientBrush HueGradient(double value, byte alpha)
+    {
+        var stops = new (double, Rgba)[7];
+        for (int i = 0; i < 7; i++)
+        {
+            double offset = i / 6.0;
+            stops[i] = (offset, new Hsv(offset * 360.0, 1.0, value).ToRgba(alpha));
+        }
+        return Gradient(stops);
+    }
+
+    private static LinearGradientBrush Gradient(params (double offset, Rgba color)[] stops)
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
+        };
+        foreach (var (offset, c) in stops)
+            brush.GradientStops.Add(new GradientStop(new Color(c.A, c.R, c.G, c.B), offset));
+        return brush;
     }
 
     private static void SetSlider(ColorSliderControl? slider, double value)

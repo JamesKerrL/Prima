@@ -28,6 +28,10 @@ Dependencies point downward only. The engine never calls up; the UI never reache
 - **Consistent style and color palette** — a single shared theme (colors, spacing, typography) drives every surface in the app. No screen or panel defines its own one-off colors or styling.
 - **Reusable components** — GUI elements are built as shared, composable components rather than bespoke per-screen markup. If a control is needed twice, it belongs in the shared component set, not copy-pasted.
 - There is a UI mockup follow only loosely
+- **Undo/redo is a first-class concern for every feature that mutates the document.** When adding any UI feature or command, decide explicitly which of two buckets it falls in and say so in the PR/commit:
+  - *Document state* (canvas pixels, and later layers, selections, transforms, filters, layer order/visibility/opacity, document metadata) — MUST be recorded as an `IUndoableEdit` through the per-`Document` `History` so a single Ctrl+Z reverts it. Coalesce continuous gestures (slider/handle drags) into one edit on gesture-end, not one per value change.
+  - *Tool/UI state* (active brush color, selected tool, brush size, zoom/pan, panel layout, palette/swatch recall) — intentionally NOT on the document undo stack; that matches standard drawing apps. Give it its own recall mechanism if useful (e.g. the color picker's own `ColorHistory`), but keep it out of `History`.
+  - If unsure which bucket applies, treat "does the exported image change?" as the test: yes → undoable document edit; no → tool state.
 
 ## Performance tenets
 
@@ -45,12 +49,23 @@ Dependencies point downward only. The engine never calls up; the UI never reache
 
 Multiple agents work on this codebase concurrently. To keep that safe:
 
+- make work trees with sensible names for each feature
+
 - Top-level areas have clear ownership boundaries: `engine/` (C++), `interop/`, `app/` (C#), `ui/`, `tests/`. Keep a change within one layer where possible.
 - Components stay small and decoupled; a change in one layer should not ripple into others. The interop boundary is the contract — change it deliberately and rarely.
 - Build and test commands must be deterministic and scriptable (document them here once scaffolding exists).
 - Keep the repo worktree-friendly: no machine-specific absolute paths in config, all generated files gitignored.
 - When a structural or architectural decision lands, update this file in the same change.
 - Active feature plans live in `docs/features/<slug>.md`; delete a plan when its feature ships and its [ROADMAP.md](ROADMAP.md) box is checked (git history retains it). `ROADMAP.md` is the backlog; `docs/features/` is only in-flight work.
+
+## Logging conventions
+
+When debugging or tracing behavior:
+
+- Prefix debug logs with `// DEBUG:` (C++) or `// DEBUG: ` (C#) to make them easy to find and delete later.
+- Use logs liberally during development to understand control flow, state changes, and data values—they're temporary aids.
+- Before committing, do a final grep for `DEBUG:` and remove the logs you no longer need. Intentional debug output belongs in a structured logging system (deferred).
+- Logs left behind with the debug prefix are fair game for later cleanup—they're acknowledged as temporary, not production code.
 
 ## Decisions
 
@@ -61,6 +76,8 @@ Multiple agents work on this codebase concurrently. To keep that safe:
 - **Interop mechanism** — opaque `PrimaCanvas*` handle across a `extern "C"` ABI; C# uses `LibraryImport` (source-generated P/Invoke). Pixels shared via `prima_canvas_pixels` (pointer into the engine's own buffer), never copied across the boundary.
 - **Render backend** — the engine owns rendering behind an abstract `Renderer` (`engine/include/prima/renderer.h`); backends are pluggable. Backend #1 is `SoftwareRenderer` (CPU, headless-testable). A `Viewport` (pan/zoom) maps target→canvas in the engine. The UI presents by rendering into its own bitmap buffer (zero-copy target). GPU backends slot in behind the same interface later — OpenGL (Avalonia `OpenGlControlBase`) first, then Vulkan/Metal via composition-surface texture interop.
 - **Brush engine** — stateful `BrushEngine` (engine-side) with `beginStroke/addSamples/endStroke` behind its own interop handle `PrimaBrushEngine`. Stroke model: linear interpolation, analytic AA (smoothstep distance falloff), 16-bit per-stroke coverage buffer composited against a begin-stroke canvas snapshot (prevents self-overlap darkening). Flow builds up (airbrush), opacity caps the stroke. Engine algorithm units are pure and isolated: `DabEmitter` (pixel-free spacing walk, batching-invariant), `RoundDabSource` (coverage stamp), pure math kernels in `brush_math.h`. The hot path is allocation-free; scratch buffers are pooled per-`BrushEngine`.
+- **Undo/redo** — app-layer `History` (`app/Prima.App/History/`) owned per-`Document`; a generic `IUndoableEdit` (`RegionEdit`, `FillEdit`, `CompositeEdit`) keeps it extensible to future ops (layers, filters, transforms). Edits store only the dirty-rect region's before/after pixels (not the whole canvas), bounded by a memory/depth budget that evicts the oldest entries first. Stroke "before" pixels are read straight out of the brush engine's existing begin-stroke baseline snapshot via `prima_brush_engine_read_baseline_region` — no extra full-canvas copy on the hot path. `History` also tracks a saved-position marker (`IsModified`/`MarkSaved()`) — the seam the eventual Milestone-2 project file format hooks into for dirty-state tracking. RAM-reduction options considered but deferred (compression, disk spill, command-replay journaling, tile-based COW, edit coalescing) live in git history at the now-removed `docs/features/undo-redo.md`.
+- **Flood fill (paint bucket)** — pure, Canvas-free engine algorithm `floodFill()` (`engine/include/prima/flood_fill.h`): contiguous 4-connected scanline fill over a raw RGBA8 buffer with an explicit stack (no recursion) and a `visited` mask (correct even when the fill color still matches the seed within tolerance). Per-channel `tolerance` (0 = exact) is designed through every layer but the UI passes 0 (no tolerance slider yet). Exposed coarse-grained as `prima_canvas_flood_fill` (void + `PrimaRect` out-dirty, like `prima_stroke_add`). App layer `Document.FloodFill()` records it as a `RegionEdit` on `History` — **document state → undoable** (one Ctrl+Z reverts a fill); it snapshots the whole canvas transiently to recover the dirty region's "before" pixels (fill is a discrete click, not a hot path). UI: `ToolType.FloodFill`, a `ToolPanel` bucket button (vector `Path` icon, theme-driven), single-click dispatch in `CanvasControl`.
 - **Version control** — git, initialized. Enables worktree-based parallel agent work.
 
 ## Open decisions
@@ -74,7 +91,9 @@ Multiple agents work on this codebase concurrently. To keep that safe:
 engine/    C++ core (STL only) — Canvas, image algorithms      → static lib prima_engine
 interop/   C ABI shim over the engine                          → shared lib prima_c.dll
 app/       Prima.App — managed wrapper (Document), no UI deps
-host/      Prima.Cli — headless console host (writes a PPM)
+host/      Prima.Cli — headless console host: canned demo (PNG/PPM) + `script` mode
+           that drives the app layer (new/clear/brush/stroke/undo/redo/pixel/status/save)
+           for headless operation & verification
 ui/        Prima.Desktop — Avalonia app; shared theme in Themes/Theme.axaml
 tests/     engine/ (GoogleTest) + app/Prima.App.Tests (xUnit, drives the real DLL)
 ```

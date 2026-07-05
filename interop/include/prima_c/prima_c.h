@@ -26,6 +26,9 @@ extern "C" {
 /* Opaque handle to a native canvas. */
 typedef struct PrimaCanvas PrimaCanvas;
 
+/* Integer pixel rect shared across the boundary; width<=0 => empty. */
+typedef struct PrimaRect { int32_t x, y, width, height; } PrimaRect;
+
 /* Create a zero-initialized RGBA8 canvas. Returns NULL on failure. */
 PRIMA_C_API PrimaCanvas* prima_canvas_create(int width, int height);
 
@@ -44,6 +47,14 @@ PRIMA_C_API void prima_canvas_clear(PrimaCanvas* canvas,
 PRIMA_C_API void prima_canvas_brush_dab(PrimaCanvas* canvas,
                                         int cx, int cy, int radius,
                                         uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+
+/* Contiguous 4-connected flood fill from (seed_x, seed_y). Matches pixels
+ * within `tolerance` per channel of the seed color (0 = exact). out_dirty
+ * (optional) receives the bounding rect of changed pixels (empty if none). */
+PRIMA_C_API void prima_canvas_flood_fill(PrimaCanvas* canvas,
+                                         int seed_x, int seed_y,
+                                         uint8_t r, uint8_t g, uint8_t b, uint8_t a,
+                                         int tolerance, PrimaRect* out_dirty);
 
 /* Return a pointer into the canvas's own pixel buffer (shared, not copied).
  * out_len receives the buffer length in bytes and out_stride the row stride in
@@ -158,8 +169,6 @@ typedef struct PrimaInputSample {
     double time_ms;               /* reserved, pass 0 */
 } PrimaInputSample;
 
-typedef struct PrimaRect { int32_t x, y, width, height; } PrimaRect;  /* width<=0 => empty */
-
 /* Opaque handle to a brush/stroke engine. One per document is typical. */
 typedef struct PrimaBrushEngine PrimaBrushEngine;
 
@@ -179,6 +188,14 @@ PRIMA_C_API void prima_stroke_add(PrimaBrushEngine* engine,
                                   PrimaRect* out_dirty);
 
 PRIMA_C_API void prima_stroke_end(PrimaBrushEngine* engine, PrimaRect* out_dirty);
+
+/* Copy a packed RGBA8 region out of the stroke's frozen "before" snapshot
+ * (the baseline every dab in the current/most recent stroke composited
+ * against), for undo history. `dst` must hold at least w*h*4 bytes. Returns 0
+ * on success, non-zero if no baseline exists yet or the rect is out of
+ * bounds. */
+PRIMA_C_API int prima_brush_engine_read_baseline_region(
+    PrimaBrushEngine* engine, int x, int y, int w, int h, uint8_t* dst);
 
 #ifdef __cplusplus
 }  /* extern "C" */
