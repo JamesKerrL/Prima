@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/app/">
+    <Project Path="app/Prima.App/Prima.App.csproj" />
+  </Folder>
+  <Folder Name="/host/">
+    <Project Path="host/Prima.Cli/Prima.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/app/">
+    <Project Path="tests/app/Prima.App.Tests/Prima.App.Tests.csproj" />
+  </Folder>
+  <Folder Name="/ui/">
+    <Project Path="ui/Prima.Desktop/Prima.Desktop.csproj" />
+  </Folder>
+</Solution>

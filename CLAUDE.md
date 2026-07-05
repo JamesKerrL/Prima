@@ -23,6 +23,12 @@ Strict layering, top to bottom:
 
 Dependencies point downward only. The engine never calls up; the UI never reaches past the application layer into the engine.
 
+## GUI conventions
+
+- **Consistent style and color palette** — a single shared theme (colors, spacing, typography) drives every surface in the app. No screen or panel defines its own one-off colors or styling.
+- **Reusable components** — GUI elements are built as shared, composable components rather than bespoke per-screen markup. If a control is needed twice, it belongs in the shared component set, not copy-pasted.
+- There is a UI mockup follow only loosely
+
 ## Performance tenets
 
 - Startup and shutdown paths are budgeted: lazy-initialize everything possible, no blocking I/O or heavy allocation on the startup path, state persistence must be fast to write on exit.
@@ -31,7 +37,7 @@ Dependencies point downward only. The engine never calls up; the UI never reache
 
 ## Testing policy
 
-- The engine gets C++ unit tests; the application layer gets .NET unit tests (frameworks TBD — see Open decisions).
+- The engine gets C++ unit tests via GoogleTest; the application layer gets .NET unit tests via xUnit.
 - Headless-first design exists partly to enable this: integration tests exercise the full app layer + engine stack without any UI.
 - Tests must be fast and runnable with a single command. Every change lands with tests.
 
@@ -45,15 +51,42 @@ Multiple agents work on this codebase concurrently. To keep that safe:
 - Keep the repo worktree-friendly: no machine-specific absolute paths in config, all generated files gitignored.
 - When a structural or architectural decision lands, update this file in the same change.
 
+## Decisions
+
+- **UI framework** — Avalonia. Criteria: startup time, ability to embed a custom high-performance canvas/render surface, desktop coverage first.
+- **C++ build system and test framework** — CMake; GoogleTest.
+- **.NET test framework** — xUnit.
+- **C++ toolchain (this machine)** — MinGW-w64 (WinLibs GCC, UCRT). `prima_c.dll` links the runtimes statically (`-static`), so it depends only on system/UCRT DLLs.
+- **Interop mechanism** — opaque `PrimaCanvas*` handle across a `extern "C"` ABI; C# uses `LibraryImport` (source-generated P/Invoke). Pixels shared via `prima_canvas_pixels` (pointer into the engine's own buffer), never copied across the boundary.
+- **Version control** — git, initialized. Enables worktree-based parallel agent work.
+
 ## Open decisions
 
-- **UI framework** — Avalonia vs .NET MAUI vs custom native shells. Criteria: startup time, ability to embed a custom high-performance canvas/render surface, desktop coverage first, mobile path second.
-- **C++ build system and test framework** — CMake is the likely default; GoogleTest vs Catch2 undecided.
-- **.NET test framework** — xUnit vs NUnit.
-- **Interop details** — exact ABI conventions, buffer-sharing mechanism, error propagation across the boundary.
+- **Error propagation across the boundary** — no status/error channel yet; the ABI is void-returning. Revisit when operations can fail.
 - **Mobile targets** — deferred.
-- **Version control** — the repo is not yet under git. Run `git init` when scaffolding starts; git is also what enables worktree-based parallel agent work.
+
+## Layout
+
+```
+engine/    C++ core (STL only) — Canvas, image algorithms      → static lib prima_engine
+interop/   C ABI shim over the engine                          → shared lib prima_c.dll
+app/       Prima.App — managed wrapper (Document), no UI deps
+host/      Prima.Cli — headless console host (writes a PPM)
+ui/        Prima.Desktop — Avalonia app; shared theme in Themes/Theme.axaml
+tests/     engine/ (GoogleTest) + app/Prima.App.Tests (xUnit, drives the real DLL)
+```
+
+The native lib is emitted to `build/native/bin/prima_c.dll`; `Directory.Build.props` copies it next to every .NET output so P/Invoke resolves it.
+
+## Build & test
+
+Run from the repo root (both scripts refresh PATH so cmake/gcc are visible):
+
+- `./build.ps1` — CMake+MinGW native build, then `dotnet build Prima.slnx`.
+- `./test.ps1` — CTest (C++), then `dotnet test` (xUnit interop/integration).
+
+Requires: .NET 10 SDK, CMake, MinGW-w64 (gcc/g++) on PATH. The solution is `Prima.slnx` (new XML format).
 
 ## Current state
 
-Vision-only. No code, build system, or git repository exists yet — do not search for implementations that aren't there. First implementation session should scaffold the repo skeleton per the layout above and replace this section.
+Milestone 0 (walking skeleton) is complete and verified end to end: create canvas → brush dab → render, exercised through the UI (mouse), the headless CLI, and tests at every layer. Next: **Milestone 1 — drawing core** (brush engine, layers, undo/redo, pan/zoom, color) per the plan.

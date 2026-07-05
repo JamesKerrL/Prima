@@ -1,0 +1,16 @@
+<Project>
+  <!-- Shared across every .NET project in Prima. Copies the native prima_c
+       library (built by CMake into build/native/bin) next to each managed
+       output so P/Invoke can find it. Guarded by Exists() so a .NET-only build
+       before the native build still succeeds. -->
+  <PropertyGroup>
+    <PrimaNativeLib>$(MSBuildThisFileDirectory)build\native\bin\prima_c.dll</PrimaNativeLib>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(PrimaNativeLib)')">
+    <None Include="$(PrimaNativeLib)">
+      <Link>prima_c.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

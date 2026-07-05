@@ -1,0 +1,22 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Prima shared theme tokens. Every view pulls its colors and spacing from
+       here; no screen defines its own one-off values. See CLAUDE.md >
+       GUI conventions (consistent palette, reusable components). -->
+  <Styles.Resources>
+    <!-- Palette -->
+    <Color x:Key="PrimaBackground">#1E1E23</Color>
+    <Color x:Key="PrimaSurface">#2A2A31</Color>
+    <Color x:Key="PrimaAccent">#4C8DFF</Color>
+    <Color x:Key="PrimaText">#EDEDF0</Color>
+
+    <SolidColorBrush x:Key="PrimaBackgroundBrush" Color="{StaticResource PrimaBackground}" />
+    <SolidColorBrush x:Key="PrimaSurfaceBrush" Color="{StaticResource PrimaSurface}" />
+    <SolidColorBrush x:Key="PrimaAccentBrush" Color="{StaticResource PrimaAccent}" />
+    <SolidColorBrush x:Key="PrimaTextBrush" Color="{StaticResource PrimaText}" />
+
+    <!-- Spacing (as Thickness so it can drive Padding/Margin directly) -->
+    <Thickness x:Key="PrimaPadMedium">8</Thickness>
+    <Thickness x:Key="PrimaPadLarge">16</Thickness>
+  </Styles.Resources>
+</Styles>

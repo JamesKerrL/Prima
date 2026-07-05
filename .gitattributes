@@ -1,0 +1,20 @@
+# Normalize line endings: LF in the repo, native on checkout.
+* text=auto
+
+# Source files always LF so cross-platform/parallel-agent diffs stay clean.
+*.cs   text eol=lf
+*.cpp  text eol=lf
+*.h    text eol=lf
+*.axaml text eol=lf
+*.csproj text eol=lf
+*.props text eol=lf
+*.txt  text eol=lf
+*.md   text eol=lf
+*.slnx text eol=lf
+
+# PowerShell scripts use CRLF on Windows.
+*.ps1  text eol=crlf
+
+# Binary assets.
+*.png  binary
+*.ppm  binary
