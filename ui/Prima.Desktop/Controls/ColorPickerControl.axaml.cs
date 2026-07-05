@@ -37,6 +37,8 @@ public sealed partial class ColorPickerControl : UserControl
     private readonly ColorPreviewSplit? _preview;
     private readonly SwatchStrip? _swatches;
     private readonly LabeledColorField? _hex;
+    private readonly Button? _copyHex;
+    private readonly Button? _pasteHex;
 
     private readonly ColorSliderControl? _sliderR;
     private readonly ColorSliderControl? _sliderG;
@@ -64,6 +66,8 @@ public sealed partial class ColorPickerControl : UserControl
         _preview = this.FindControl<ColorPreviewSplit>("PART_Preview");
         _swatches = this.FindControl<SwatchStrip>("PART_Swatches");
         _hex = this.FindControl<LabeledColorField>("PART_Hex");
+        _copyHex = this.FindControl<Button>("PART_CopyHex");
+        _pasteHex = this.FindControl<Button>("PART_PasteHex");
 
         _sliderR = this.FindControl<ColorSliderControl>("PART_SliderR");
         _sliderG = this.FindControl<ColorSliderControl>("PART_SliderG");
@@ -90,6 +94,11 @@ public sealed partial class ColorPickerControl : UserControl
 
         if (_hex is not null)
             _hex.Committed += (_, text) => OnHexCommitted(text);
+
+        if (_copyHex is not null)
+            _copyHex.Click += OnCopyHex;
+        if (_pasteHex is not null)
+            _pasteHex.Click += OnPasteHex;
 
         WireSlider(_sliderR, _ => CommitRgbFromSliders());
         WireSlider(_sliderG, _ => CommitRgbFromSliders());
@@ -187,6 +196,24 @@ public sealed partial class ColorPickerControl : UserControl
             ApplyUserColor(color);
         else
             SyncFields(SelectedColor, CurrentHsv());
+    }
+
+    private async void OnCopyHex(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel?.Clipboard is { } clipboard)
+            await clipboard.SetTextAsync(Hsv.ToHex(SelectedColor));
+    }
+
+    private async void OnPasteHex(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel?.Clipboard is { } clipboard)
+        {
+            var text = await clipboard.GetTextAsync();
+            if (text is not null && Hsv.TryParseHex(text, out var color))
+                ApplyUserColor(color);
+        }
     }
 
     private void CommitRgbFromSliders()

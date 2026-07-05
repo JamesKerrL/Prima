@@ -56,7 +56,23 @@
       </StackPanel>
 
       <StackPanel x:Name="PART_HexPanel" Spacing="2" IsVisible="False">
-        <controls:LabeledColorField x:Name="PART_Hex" Label="#" />
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <controls:LabeledColorField x:Name="PART_Hex" Label="#" />
+          <Button x:Name="PART_CopyHex"
+                  Click="OnCopyHex"
+                  Padding="6,2"
+                  Background="{StaticResource PrimaBackgroundBrush}"
+                  Foreground="{StaticResource PrimaTextBrush}"
+                  BorderBrush="{StaticResource PrimaTextBrush}"
+                  Content="Copy" />
+          <Button x:Name="PART_PasteHex"
+                  Click="OnPasteHex"
+                  Padding="6,2"
+                  Background="{StaticResource PrimaBackgroundBrush}"
+                  Foreground="{StaticResource PrimaTextBrush}"
+                  BorderBrush="{StaticResource PrimaTextBrush}"
+                  Content="Paste" />
+        </StackPanel>
       </StackPanel>
 
       <Button x:Name="PART_AddSwatch"
