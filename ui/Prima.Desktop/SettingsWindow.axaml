@@ -24,6 +24,15 @@
         <ComboBoxItem>1920 x 1080</ComboBoxItem>
         <ComboBoxItem>2560 x 1440</ComboBoxItem>
       </ComboBox>
+
+      <TextBlock Text="Storage" Foreground="{StaticResource PrimaTextBrush}" FontWeight="Bold" Margin="0,16,0,0" />
+      <TextBlock Text="Palettes directory" Foreground="{StaticResource PrimaTextBrush}" />
+      <DockPanel>
+        <Button x:Name="OpenPalettesDirBtn" Content="Open in Explorer" DockPanel.Dock="Right" />
+        <TextBox x:Name="PalettesDirText" IsReadOnly="True"
+                 Foreground="{StaticResource PrimaTextBrush}"
+                 Background="{StaticResource PrimaSurfaceBrush}" />
+      </DockPanel>
     </StackPanel>
   </DockPanel>
 </Window>

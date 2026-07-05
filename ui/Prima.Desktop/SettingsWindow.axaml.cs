@@ -1,4 +1,7 @@
+using System.Diagnostics;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Prima.App;
 
 namespace Prima.Desktop;
 
@@ -22,6 +25,9 @@ public partial class SettingsWindow : Window
     public SettingsWindow(MainWindow owner) : this()
     {
         _owner = owner;
+
+        PalettesDirText.Text = AppPaths.Palettes;
+        OpenPalettesDirBtn.Click += OnOpenPalettesDir;
     }
 
     private void OnResolutionChanged(object? sender, SelectionChangedEventArgs e)
@@ -42,5 +48,17 @@ public partial class SettingsWindow : Window
         _owner.WindowState = WindowState.Normal;
         _owner.Width = width;
         _owner.Height = height;
+    }
+
+    private void OnOpenPalettesDir(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(AppPaths.Palettes) { UseShellExecute = true });
+        }
+        catch
+        {
+            // Fallback: silently ignore if we can't open the folder
+        }
     }
 }

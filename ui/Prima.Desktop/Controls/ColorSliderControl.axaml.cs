@@ -66,6 +66,8 @@ public sealed partial class ColorSliderControl : UserControl
         {
             _slider.PointerPressed += OnSliderPointerPressed;
             _slider.PointerReleased += OnSliderPointerReleased;
+            _slider.Minimum = Minimum;
+            _slider.Maximum = Maximum;
         }
     }
 

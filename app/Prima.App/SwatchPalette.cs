@@ -24,5 +24,11 @@ public sealed class SwatchPalette
     /// <summary>Removes a swatch by value. No-op if not present.</summary>
     public void Remove(Rgba color) => _swatches.Remove(color);
 
+    public void AddRange(IEnumerable<Rgba> colors)
+    {
+        foreach (var color in colors)
+            Add(color);
+    }
+
     public void Clear() => _swatches.Clear();
 }

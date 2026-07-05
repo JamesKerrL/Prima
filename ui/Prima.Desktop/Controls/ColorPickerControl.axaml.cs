@@ -1,6 +1,8 @@
 using System;
 using System.Globalization;
 using Avalonia;
+
+#pragma warning disable CS0618  // OpenFileDialog/SaveFileDialog are deprecated but work fine.
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
@@ -24,7 +26,8 @@ public sealed partial class ColorPickerControl : UserControl
     }
 
     private readonly ColorHistory _history = new();
-    private readonly SwatchPalette _palette = new();
+    private SwatchPalette _palette = new();
+    private RecentPalettes _recentPalettes = new();
     private bool _syncing;
     private Rgba _previousColor;
 
@@ -118,6 +121,13 @@ public sealed partial class ColorPickerControl : UserControl
             _swatches.Palette = _palette;
             _swatches.History = _history;
             _swatches.ColorSelected += (_, color) => ApplyUserColor(color);
+            _swatches.SaveRequested += OnSavePalette;
+            _swatches.LoadRequested += OnLoadPalette;
+            _swatches.OpenRecentRequested += OnOpenRecentPalette;
+
+            AppPaths.EnsureDirectories();
+            _recentPalettes = RecentPalettes.Load(AppPaths.RecentJson);
+            _swatches.RecentPaths = _recentPalettes.Paths;
         }
 
         _previousColor = SelectedColor;
@@ -236,10 +246,94 @@ public sealed partial class ColorPickerControl : UserControl
         ApplyUserHsv(hsv, alpha, updateWheel: true);
     }
 
+    public SwatchPalette Palette => _palette;
+
+    public void LoadPalette(SwatchPalette palette)
+    {
+        _palette = palette;
+        _history.Clear();
+        if (_swatches is not null)
+        {
+            _swatches.Palette = palette;
+            _swatches.Refresh();
+        }
+    }
+
     private void AddCurrentSwatch()
     {
         _palette.Add(SelectedColor);
         _swatches?.Refresh();
+    }
+
+    private async void OnSavePalette(object? sender, EventArgs e)
+    {
+        var top = TopLevel.GetTopLevel(this);
+        if (top is not Window window) return;
+
+        var dlg = new SaveFileDialog
+        {
+            Title = "Save Palette",
+            DefaultExtension = "json",
+            Directory = AppPaths.Palettes,
+            Filters =
+            {
+                new FileDialogFilter { Name = "Palette Files", Extensions = { "json" } },
+            },
+        };
+
+        string? path = await dlg.ShowAsync(window);
+        if (path is null) return;
+
+        PaletteSerializer.SaveToFile(Palette, path);
+        _recentPalettes.Add(path);
+        _recentPalettes.Save(AppPaths.RecentJson);
+        if (_swatches is not null)
+            _swatches.RecentPaths = _recentPalettes.Paths;
+    }
+
+    private async void OnLoadPalette(object? sender, EventArgs e)
+    {
+        var top = TopLevel.GetTopLevel(this);
+        if (top is not Window window) return;
+
+        var dlg = new OpenFileDialog
+        {
+            Title = "Load Palette",
+            Directory = AppPaths.Palettes,
+            Filters =
+            {
+                new FileDialogFilter { Name = "Palette Files", Extensions = { "json" } },
+                new FileDialogFilter { Name = "All Files", Extensions = { "*" } },
+            },
+            AllowMultiple = false,
+        };
+
+        string[]? result = await dlg.ShowAsync(window);
+        if (result is null || result.Length == 0) return;
+
+        LoadPaletteFile(result[0]);
+    }
+
+    private void OnOpenRecentPalette(object? sender, string path)
+    {
+        LoadPaletteFile(path);
+    }
+
+    private void LoadPaletteFile(string path)
+    {
+        try
+        {
+            var palette = PaletteSerializer.LoadFromFile(path);
+            LoadPalette(palette);
+            _recentPalettes.Add(path);
+            _recentPalettes.Save(AppPaths.RecentJson);
+            if (_swatches is not null)
+                _swatches.RecentPaths = _recentPalettes.Paths;
+        }
+        catch
+        {
+            // Silently fail on corrupt files for now
+        }
     }
 
     private void ApplyUserColor(Rgba color, bool updateWheel = true)
