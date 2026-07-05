@@ -19,4 +19,34 @@
     <Thickness x:Key="PrimaPadMedium">8</Thickness>
     <Thickness x:Key="PrimaPadLarge">16</Thickness>
   </Styles.Resources>
+
+  <!-- Menu bar: Fluent's defaults are light-themed, so override to match
+       the Prima dark palette. Any future top-level menu (Edit, View, ...)
+       picks this up automatically since it targets the Menu/MenuItem types. -->
+  <Style Selector="Menu">
+    <Setter Property="Background" Value="{StaticResource PrimaSurfaceBrush}" />
+  </Style>
+  <Style Selector="MenuItem">
+    <Setter Property="Background" Value="{StaticResource PrimaSurfaceBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource PrimaTextBrush}" />
+  </Style>
+  <Style Selector="MenuItem:selected /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="{StaticResource PrimaAccentBrush}" />
+  </Style>
+  <Style Selector="MenuItem:pointerover /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="{StaticResource PrimaAccentBrush}" />
+  </Style>
+
+  <!-- Color picker: same light-vs-dark mismatch as Menu/MenuItem above. -->
+  <Style Selector="ColorPicker">
+    <Setter Property="Background" Value="{StaticResource PrimaSurfaceBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource PrimaTextBrush}" />
+  </Style>
+  <Style Selector="ColorView">
+    <Setter Property="Background" Value="{StaticResource PrimaSurfaceBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource PrimaTextBrush}" />
+  </Style>
+  <Style Selector="FlyoutPresenter">
+    <Setter Property="Background" Value="{StaticResource PrimaSurfaceBrush}" />
+  </Style>
 </Styles>

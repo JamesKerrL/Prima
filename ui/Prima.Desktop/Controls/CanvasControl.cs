@@ -31,6 +31,13 @@ public sealed class CanvasControl : Control, IDisposable
     private bool _panning;
     private Point _lastPanPoint;
 
+    /// <summary>
+    /// While true, the viewport is recomputed each render to fit the whole
+    /// document into the control's bounds. Cleared the moment the user pans
+    /// or zooms manually, so their choice isn't clobbered by a later resize.
+    /// </summary>
+    private bool _autoFit = true;
+
     /// <summary>Fill color for target area outside the canvas.</summary>
     public Rgba Background { get; set; } = new(30, 30, 35, 255);
 
@@ -64,6 +71,9 @@ public sealed class CanvasControl : Control, IDisposable
         if (_document is null || Bounds.Width < 1 || Bounds.Height < 1)
             return;
 
+        if (_autoFit)
+            FitToWindow();
+
         double scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
         int pw = Math.Max(1, (int)Math.Ceiling(Bounds.Width * scaling));
         int ph = Math.Max(1, (int)Math.Ceiling(Bounds.Height * scaling));
@@ -72,6 +82,19 @@ public sealed class CanvasControl : Control, IDisposable
         RenderIntoBitmap(scaling);
 
         context.DrawImage(_bitmap!, new Rect(_bitmap!.Size), new Rect(Bounds.Size));
+    }
+
+    /// <summary>Scales and centers the viewport so the whole document fits the control's bounds.</summary>
+    private void FitToWindow()
+    {
+        double zoom = Math.Clamp(
+            Math.Min(Bounds.Width / _document!.Width, Bounds.Height / _document.Height),
+            MinZoom, MaxZoom);
+
+        _viewport = new Viewport(
+            _document.Width / 2.0 - Bounds.Width / (2.0 * zoom),
+            _document.Height / 2.0 - Bounds.Height / (2.0 * zoom),
+            zoom);
     }
 
     private void EnsureBitmap(int pw, int ph)
@@ -105,6 +128,7 @@ public sealed class CanvasControl : Control, IDisposable
 
         if (props.IsMiddleButtonPressed || (_spaceHeld && props.IsLeftButtonPressed))
         {
+            _autoFit = false;
             _panning = true;
             _lastPanPoint = pos;
         }
@@ -143,6 +167,7 @@ public sealed class CanvasControl : Control, IDisposable
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e);
+        _autoFit = false;
         var pos = e.GetPosition(this);
         double factor = e.Delta.Y > 0 ? 1.1 : 1.0 / 1.1;
         double newZoom = Math.Clamp(_viewport.Zoom * factor, MinZoom, MaxZoom);

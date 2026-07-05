@@ -16,7 +16,6 @@ Check off items as they land: `- [x] done thing`.
 - [ ] Undo/redo (command pattern in the app layer)
 - [x] Canvas pan/zoom (delivered via the render-backend work below)
 - [ ] Color picker + palette (use open source color library if necessary)
-- [ ] anti aliasing for brushes
 
 ## Milestone 1a — Canvas view & render backend (in progress)
 

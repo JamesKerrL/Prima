@@ -1,0 +1,6 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:colorPicker="using:Avalonia.Controls"
+             x:Class="Prima.Desktop.Controls.ColorPickerControl">
+  <colorPicker:ColorPicker x:Name="PART_ColorPicker" ColorChanged="OnLibraryColorChanged" />
+</UserControl>

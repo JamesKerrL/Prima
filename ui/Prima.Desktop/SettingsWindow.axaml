@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Prima.Desktop.SettingsWindow"
+        Title="Settings"
+        Width="420" Height="320"
+        Background="{StaticResource PrimaBackgroundBrush}"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel>
+    <Border DockPanel.Dock="Top"
+            Background="{StaticResource PrimaSurfaceBrush}"
+            Padding="{StaticResource PrimaPadMedium}">
+      <TextBlock Text="Settings" Foreground="{StaticResource PrimaTextBrush}" FontWeight="Bold" />
+    </Border>
+
+    <StackPanel Margin="{StaticResource PrimaPadLarge}" Spacing="8">
+      <TextBlock Text="Window resolution" Foreground="{StaticResource PrimaTextBrush}" />
+      <ComboBox x:Name="ResolutionComboBox"
+                Width="220"
+                HorizontalAlignment="Left"
+                SelectionChanged="OnResolutionChanged">
+        <ComboBoxItem>Fit to screen</ComboBoxItem>
+        <ComboBoxItem>1280 x 720</ComboBoxItem>
+        <ComboBoxItem>1600 x 900</ComboBoxItem>
+        <ComboBoxItem>1920 x 1080</ComboBoxItem>
+        <ComboBoxItem>2560 x 1440</ComboBoxItem>
+      </ComboBox>
+    </StackPanel>
+  </DockPanel>
+</Window>
