@@ -248,6 +248,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (e.Key == Key.K && e.KeyModifiers == KeyModifiers.Control)
+        {
+            Palette.Show(_commandRegistry);
+            e.Handled = true;
+            return;
+        }
+
         base.OnKeyDown(e);
     }
 
