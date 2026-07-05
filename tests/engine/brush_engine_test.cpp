@@ -3,11 +3,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <iostream>
 #include <vector>
 
 #include <gtest/gtest.h>
 
 #include "prima/canvas.h"
+#include "prima/image_io.h"
 
 using prima::BrushEngine;
 using prima::BrushParams;
@@ -15,6 +17,7 @@ using prima::Canvas;
 using prima::InputSample;
 using prima::RectI;
 using prima::Rgba;
+using prima::saveImagePng;
 
 namespace {
 
@@ -22,6 +25,14 @@ Rgba readPixel(const Canvas& canvas, int x, int y) {
     const uint8_t* p = canvas.pixels();
     std::size_t idx = (static_cast<std::size_t>(y) * canvas.width() + x) * 4;
     return Rgba{p[idx + 0], p[idx + 1], p[idx + 2], p[idx + 3]};
+}
+
+void saveCanvasToPng(const Canvas& canvas, const char* filename) {
+    if (saveImagePng(filename, canvas.pixels(), canvas.width(), canvas.height())) {
+        std::cout << "Saved test image: " << filename << std::endl;
+    } else {
+        std::cerr << "Failed to save image: " << filename << std::endl;
+    }
 }
 
 }  // namespace
@@ -347,4 +358,111 @@ TEST(BrushEngineTest, BatchingSamplesIntoMultipleAddSamplesCallsMatchesSingleCal
     engineB.endStroke();
 
     EXPECT_EQ(std::memcmp(canvasA.pixels(), canvasB.pixels(), canvasA.byteSize()), 0);
+}
+
+// Visual output tests for inspecting brush edge quality
+TEST(BrushEngineTest, DISABLED_VisualSimpleDiagonalStroke) {
+    Canvas canvas(200, 200);
+    canvas.clear(Rgba{255, 255, 255, 255});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 8;
+    p.hardness = 0.7f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{0, 0, 0, 255};
+    p.spacing = 0.5f;
+
+    engine.beginStroke(canvas, p);
+    // Diagonal stroke from top-left to bottom-right
+    for (int i = 0; i <= 20; ++i) {
+        float t = i / 20.0f;
+        InputSample s{20.0f + t * 160.0f, 20.0f + t * 160.0f, 1.0f};
+        engine.addSamples(&s, 1);
+    }
+    engine.endStroke();
+
+    saveCanvasToPng(canvas, "brush_diagonal_stroke.png");
+    SUCCEED();  // Visual test; always passes so you can inspect the image
+}
+
+TEST(BrushEngineTest, DISABLED_VisualHorizontalStroke) {
+    Canvas canvas(200, 200);
+    canvas.clear(Rgba{255, 255, 255, 255});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 8;
+    p.hardness = 0.7f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{0, 0, 0, 255};
+    p.spacing = 0.5f;
+
+    engine.beginStroke(canvas, p);
+    // Horizontal stroke from left to right
+    for (int i = 0; i <= 20; ++i) {
+        float t = i / 20.0f;
+        InputSample s{20.0f + t * 160.0f, 100.0f, 1.0f};
+        engine.addSamples(&s, 1);
+    }
+    engine.endStroke();
+
+    saveCanvasToPng(canvas, "brush_horizontal_stroke.png");
+    SUCCEED();
+}
+
+TEST(BrushEngineTest, DISABLED_VisualSmoothCurvedStroke) {
+    Canvas canvas(200, 200);
+    canvas.clear(Rgba{255, 255, 255, 255});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 8;
+    p.hardness = 0.7f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{0, 0, 0, 255};
+    p.spacing = 0.5f;
+
+    engine.beginStroke(canvas, p);
+    // Sine curve stroke
+    for (int i = 0; i <= 40; ++i) {
+        float t = i / 40.0f;
+        float x = 30.0f + t * 140.0f;
+        float y = 100.0f + 30.0f * std::sin(t * 3.14159f * 2.0f);
+        InputSample s{x, y, 1.0f};
+        engine.addSamples(&s, 1);
+    }
+    engine.endStroke();
+
+    saveCanvasToPng(canvas, "brush_curved_stroke.png");
+    SUCCEED();
+}
+
+TEST(BrushEngineTest, DISABLED_VisualHardBrush) {
+    Canvas canvas(200, 200);
+    canvas.clear(Rgba{255, 255, 255, 255});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 8;
+    p.hardness = 1.0f;  // Very hard edge
+    p.opacity = 1;
+    p.flow = 1;
+    p.color = Rgba{0, 0, 0, 255};
+    p.spacing = 0.5f;
+
+    engine.beginStroke(canvas, p);
+    // Horizontal stroke
+    for (int i = 0; i <= 20; ++i) {
+        float t = i / 20.0f;
+        InputSample s{20.0f + t * 160.0f, 100.0f, 1.0f};
+        engine.addSamples(&s, 1);
+    }
+    engine.endStroke();
+
+    saveCanvasToPng(canvas, "brush_hard_edge.png");
+    SUCCEED();
 }
