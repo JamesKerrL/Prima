@@ -375,12 +375,15 @@ TEST(BrushEngineTest, DISABLED_VisualSimpleDiagonalStroke) {
     p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
-    // Diagonal stroke from top-left to bottom-right
-    for (int i = 0; i <= 20; ++i) {
-        float t = i / 20.0f;
-        InputSample s{20.0f + t * 160.0f, 20.0f + t * 160.0f, 1.0f};
-        engine.addSamples(&s, 1);
-    }
+    // Diagonal stroke from top-left to bottom-right. Only two raw samples —
+    // pen-down and pen-up — to mimic a fast mouse swipe where the OS/UI
+    // delivers few, widely-spaced pointer events. All intermediate dabs come
+    // from DabEmitter's own spacing-walk interpolation over the long segment,
+    // which is exactly what happens on a quick real stroke.
+    InputSample start{20.0f, 20.0f, 1.0f};
+    InputSample end{180.0f, 180.0f, 1.0f};
+    engine.addSamples(&start, 1);
+    engine.addSamples(&end, 1);
     engine.endStroke();
 
     saveCanvasToPng(canvas, "brush_diagonal_stroke.png");
@@ -401,12 +404,12 @@ TEST(BrushEngineTest, DISABLED_VisualHorizontalStroke) {
     p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
-    // Horizontal stroke from left to right
-    for (int i = 0; i <= 20; ++i) {
-        float t = i / 20.0f;
-        InputSample s{20.0f + t * 160.0f, 100.0f, 1.0f};
-        engine.addSamples(&s, 1);
-    }
+    // Horizontal stroke from left to right. Only two raw samples (fast swipe);
+    // see comment in VisualSimpleDiagonalStroke above.
+    InputSample start{20.0f, 100.0f, 1.0f};
+    InputSample end{180.0f, 100.0f, 1.0f};
+    engine.addSamples(&start, 1);
+    engine.addSamples(&end, 1);
     engine.endStroke();
 
     saveCanvasToPng(canvas, "brush_horizontal_stroke.png");
@@ -427,9 +430,13 @@ TEST(BrushEngineTest, DISABLED_VisualSmoothCurvedStroke) {
     p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
-    // Sine curve stroke
-    for (int i = 0; i <= 40; ++i) {
-        float t = i / 40.0f;
+    // Sine curve stroke, sampled sparsely (5 raw points instead of 40) to
+    // mimic a fast mouse swipe along a curve. DabEmitter linearly interpolates
+    // between raw samples, so a quick stroke through a curve gets chorded
+    // into straight segments between the few points the OS actually delivered
+    // — this is what produces visible faceting on fast curved strokes.
+    for (int i = 0; i <= 4; ++i) {
+        float t = i / 4.0f;
         float x = 30.0f + t * 140.0f;
         float y = 100.0f + 30.0f * std::sin(t * 3.14159f * 2.0f);
         InputSample s{x, y, 1.0f};
@@ -455,12 +462,12 @@ TEST(BrushEngineTest, DISABLED_VisualHardBrush) {
     p.spacing = 0.1f;
 
     engine.beginStroke(canvas, p);
-    // Horizontal stroke
-    for (int i = 0; i <= 20; ++i) {
-        float t = i / 20.0f;
-        InputSample s{20.0f + t * 160.0f, 100.0f, 1.0f};
-        engine.addSamples(&s, 1);
-    }
+    // Horizontal stroke. Only two raw samples (fast swipe); see comment in
+    // VisualSimpleDiagonalStroke above.
+    InputSample start{20.0f, 100.0f, 1.0f};
+    InputSample end{180.0f, 100.0f, 1.0f};
+    engine.addSamples(&start, 1);
+    engine.addSamples(&end, 1);
     engine.endStroke();
 
     saveCanvasToPng(canvas, "brush_hard_edge.png");
