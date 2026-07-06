@@ -31,12 +31,19 @@ public partial class MainWindow : Window
 
         WindowState = WindowState.Maximized;
 
+        PART_ToolContextBar.BrushSizeChanged += OnBrushSizeChanged;
+        PART_ToolContextBar.BrushHardnessChanged += OnBrushHardnessChanged;
+        PART_ToolContextBar.BrushOpacityChanged += OnBrushOpacityChanged;
+        PART_ToolContextBar.BrushFlowChanged += OnBrushFlowChanged;
+
         var doc = new Document(CanvasWidth, CanvasHeight);
         doc.Clear(Rgba.White);
         doc.History.Clear(); // the initial fill is setup, not an undoable edit
 
         SetDocument(doc);
         BrushColorPicker.SelectedColor = Canvas.BrushColor;
+        PART_ToolContextBar.SyncFromCanvas(Canvas);
+        PART_ToolContextBar.SetTool(Canvas.CurrentTool);
     }
 
     private void SetDocument(Document doc)
@@ -47,6 +54,8 @@ public partial class MainWindow : Window
         Canvas.Document = doc;
         doc.History.Changed += OnHistoryChanged;
         UpdateTitle();
+        PART_ToolContextBar.SyncFromCanvas(Canvas);
+        PART_ToolContextBar.SetTool(Canvas.CurrentTool);
 
         BrushColorPicker.SelectedColor = Canvas.BrushColor;
 
@@ -76,7 +85,16 @@ public partial class MainWindow : Window
 
     private void OnBrushColorChanged(object? sender, Rgba color) => Canvas.BrushColor = color;
 
-    private void OnToolSelected(object? sender, ToolType tool) => Canvas.CurrentTool = tool;
+    private void OnToolSelected(object? sender, ToolType tool)
+    {
+        Canvas.CurrentTool = tool;
+        PART_ToolContextBar.SetTool(tool);
+    }
+
+    private void OnBrushSizeChanged(object? sender, float size) => Canvas.BrushSize = size;
+    private void OnBrushHardnessChanged(object? sender, float hardness) => Canvas.BrushHardness = hardness;
+    private void OnBrushOpacityChanged(object? sender, float opacity) => Canvas.BrushOpacity = opacity;
+    private void OnBrushFlowChanged(object? sender, float flow) => Canvas.BrushFlow = flow;
 
     private async void OnOpenFile(object? sender, RoutedEventArgs e)
     {

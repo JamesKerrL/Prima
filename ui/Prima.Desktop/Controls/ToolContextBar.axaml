@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Prima.Desktop.Controls.ToolContextBar">
+  <Border Background="{StaticResource PrimaSurfaceBrush}"
+          Padding="8,4"
+          Height="36">
+    <StackPanel Orientation="Horizontal" Spacing="12">
+      <TextBlock x:Name="PART_ToolLabel"
+                 VerticalAlignment="Center"
+                 FontWeight="Bold"
+                 Foreground="{StaticResource PrimaTextBrush}"
+                 MinWidth="50" />
+      <Separator Width="1"
+                 VerticalAlignment="Stretch"
+                 Background="{StaticResource PrimaTextBrush}"
+                 Opacity="0.3"
+                 Margin="0,4" />
+      <StackPanel x:Name="PART_BrushOptions"
+                  Orientation="Horizontal"
+                  Spacing="10"
+                  IsVisible="True">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <TextBlock Text="Size"
+                     VerticalAlignment="Center"
+                     Foreground="{StaticResource PrimaTextBrush}"
+                     FontSize="12" />
+          <Slider x:Name="PART_SizeSlider"
+                  Width="100"
+                  VerticalAlignment="Center"
+                  Minimum="0.3"
+                  Maximum="500"
+                  Value="12" />
+          <TextBlock x:Name="PART_SizeValue"
+                     VerticalAlignment="Center"
+                     Foreground="{StaticResource PrimaTextBrush}"
+                     FontSize="11"
+                     MinWidth="30"
+                     Text="12.0" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <TextBlock Text="Hardness"
+                     VerticalAlignment="Center"
+                     Foreground="{StaticResource PrimaTextBrush}"
+                     FontSize="12" />
+          <Slider x:Name="PART_HardnessSlider"
+                  Width="80"
+                  VerticalAlignment="Center"
+                  Minimum="0"
+                  Maximum="1"
+                  Value="0.8" />
+          <TextBlock x:Name="PART_HardnessValue"
+                     VerticalAlignment="Center"
+                     Foreground="{StaticResource PrimaTextBrush}"
+                     FontSize="11"
+                     MinWidth="24"
+                     Text="0.8" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <TextBlock Text="Opacity"
+                     VerticalAlignment="Center"
+                     Foreground="{StaticResource PrimaTextBrush}"
+                     FontSize="12" />
+          <Slider x:Name="PART_OpacitySlider"
+                  Width="80"
+                  VerticalAlignment="Center"
+                  Minimum="0"
+                  Maximum="1"
+                  Value="1" />
+          <TextBlock x:Name="PART_OpacityValue"
+                     VerticalAlignment="Center"
+                     Foreground="{StaticResource PrimaTextBrush}"
+                     FontSize="11"
+                     MinWidth="24"
+                     Text="1.0" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <TextBlock Text="Flow"
+                     VerticalAlignment="Center"
+                     Foreground="{StaticResource PrimaTextBrush}"
+                     FontSize="12" />
+          <Slider x:Name="PART_FlowSlider"
+                  Width="80"
+                  VerticalAlignment="Center"
+                  Minimum="0"
+                  Maximum="1"
+                  Value="1" />
+          <TextBlock x:Name="PART_FlowValue"
+                     VerticalAlignment="Center"
+                     Foreground="{StaticResource PrimaTextBrush}"
+                     FontSize="11"
+                     MinWidth="24"
+                     Text="1.0" />
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</UserControl>

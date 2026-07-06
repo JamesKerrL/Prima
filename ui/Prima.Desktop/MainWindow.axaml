@@ -35,6 +35,9 @@
       </MenuItem>
       </Menu>
 
+      <controls:ToolContextBar x:Name="PART_ToolContextBar"
+                                DockPanel.Dock="Top" />
+
       <controls:ToolPanel x:Name="PART_ToolPanel"
                           DockPanel.Dock="Left"
                           ToolSelected="OnToolSelected" />
