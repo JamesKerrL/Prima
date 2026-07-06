@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Prima.App;
+using Prima.Desktop.Controls;
 
 namespace Prima.Desktop;
 
@@ -16,6 +17,7 @@ public partial class SettingsWindow : Window
     };
 
     private readonly MainWindow? _owner;
+    private CanvasControl? _canvas;
 
     public SettingsWindow()
     {
@@ -25,9 +27,13 @@ public partial class SettingsWindow : Window
     public SettingsWindow(MainWindow owner) : this()
     {
         _owner = owner;
+        _canvas = owner.FindControl<CanvasControl>("Canvas");
 
         PalettesDirText.Text = AppPaths.Palettes;
         OpenPalettesDirBtn.Click += OnOpenPalettesDir;
+
+        var settings = AppSettings.Instance;
+        RendererComboBox.SelectedIndex = (int)settings.Renderer;
     }
 
     private void OnResolutionChanged(object? sender, SelectionChangedEventArgs e)
@@ -60,5 +66,19 @@ public partial class SettingsWindow : Window
         {
             // Fallback: silently ignore if we can't open the folder
         }
+    }
+
+    private void OnRendererChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        var index = RendererComboBox.SelectedIndex;
+        if (index < 0 || _canvas is null)
+            return;
+
+        var backend = (AppSettings.RendererBackend)index;
+        var settings = AppSettings.Instance;
+        settings.Renderer = backend;
+        settings.Save();
+
+        _canvas.SetRendererBackend(backend);
     }
 }

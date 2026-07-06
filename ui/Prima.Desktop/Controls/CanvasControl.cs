@@ -22,7 +22,7 @@ namespace Prima.Desktop.Controls;
 /// </summary>
 public sealed class CanvasControl : Control, IDisposable
 {
-    private readonly Renderer _renderer = Renderer.CreateSoftware();
+    private Renderer _renderer;
     private readonly BrushEngine _brushEngine = BrushEngine.Create();
     private Document? _document;
     private WriteableBitmap? _bitmap;
@@ -98,6 +98,23 @@ public sealed class CanvasControl : Control, IDisposable
     {
         ClipToBounds = true;
         Focusable = true;
+        _renderer = CreateRenderer(AppSettings.Instance.Renderer);
+    }
+
+    private Renderer CreateRenderer(AppSettings.RendererBackend backend) => backend switch
+    {
+        AppSettings.RendererBackend.Best => Renderer.CreateBest(),
+        AppSettings.RendererBackend.Direct3D11 => Renderer.CreateD3D11() ?? Renderer.CreateSoftware(),
+        AppSettings.RendererBackend.Software => Renderer.CreateSoftware(),
+        _ => Renderer.CreateBest()
+    };
+
+    public void SetRendererBackend(AppSettings.RendererBackend backend)
+    {
+        _renderer.Dispose();
+        _renderer = CreateRenderer(backend);
+        _fullRenderPending = true;
+        InvalidateVisual();
     }
 
     public Document? Document
