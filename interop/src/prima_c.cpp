@@ -12,6 +12,10 @@
 #include "prima/renderer.h"
 #include "prima/viewport.h"
 
+#ifdef PRIMA_HAS_D3D11
+#include "prima/d3d11_renderer.h"
+#endif
+
 using prima::BrushEngine;
 using prima::BrushParams;
 using prima::Canvas;
@@ -39,6 +43,9 @@ const Canvas* as_canvas(const PrimaCanvas* c) {
     return reinterpret_cast<const Canvas*>(c);
 }
 Renderer* as_renderer(PrimaRenderer* r) { return reinterpret_cast<Renderer*>(r); }
+const Renderer* as_renderer(const PrimaRenderer* r) {
+    return reinterpret_cast<const Renderer*>(r);
+}
 ColorWheel* as_colorwheel(PrimaColorWheel* w) {
     return reinterpret_cast<ColorWheel*>(w);
 }
@@ -111,6 +118,18 @@ uint8_t* prima_canvas_pixels(PrimaCanvas* canvas, size_t* out_len,
 
 PrimaRenderer* prima_renderer_create_software(void) {
     return reinterpret_cast<PrimaRenderer*>(new (std::nothrow) SoftwareRenderer());
+}
+
+PrimaRenderer* prima_renderer_create_d3d11(void) {
+#ifdef PRIMA_HAS_D3D11
+    return reinterpret_cast<PrimaRenderer*>(prima::createD3d11Renderer().release());
+#else
+    return nullptr;
+#endif
+}
+
+const char* prima_renderer_name(const PrimaRenderer* renderer) {
+    return renderer ? as_renderer(renderer)->name() : "";
 }
 
 void prima_renderer_destroy(PrimaRenderer* renderer) {

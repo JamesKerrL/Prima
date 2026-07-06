@@ -14,6 +14,14 @@ endif()
 set(PRIMA_NATIVE_BIN_DIR "${CMAKE_SOURCE_DIR}/build/native/bin"
     CACHE PATH "Directory for the prima_c shared library")
 
+# Direct3D 11 render backend (Windows only). MinGW-w64 supplies the headers and
+# import libs, so this defaults ON for any Windows build.
+if(WIN32)
+    option(PRIMA_ENABLE_D3D11 "Build the Direct3D 11 render backend" ON)
+else()
+    set(PRIMA_ENABLE_D3D11 OFF)
+endif()
+
 enable_testing()
 
 add_subdirectory(engine)

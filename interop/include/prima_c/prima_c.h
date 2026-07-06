@@ -73,6 +73,17 @@ typedef struct PrimaRenderer PrimaRenderer;
 /* Create the software (CPU) render backend. Returns NULL on failure. */
 PRIMA_C_API PrimaRenderer* prima_renderer_create_software(void);
 
+/* Create the Direct3D 11 render backend (hardware device, falling back to
+ * WARP, the in-box software rasterizer that needs no GPU or display). Returns
+ * NULL when D3D11 is unavailable -- including builds where the backend is
+ * compiled out (non-Windows / PRIMA_ENABLE_D3D11=OFF), where this export still
+ * exists but always returns NULL. Callers fall back to software. */
+PRIMA_C_API PrimaRenderer* prima_renderer_create_d3d11(void);
+
+/* Backend name ("software", "d3d11"). Static string valid for the renderer's
+ * lifetime. Returns "" for NULL. */
+PRIMA_C_API const char* prima_renderer_name(const PrimaRenderer* renderer);
+
 /* Destroy a renderer. Safe to pass NULL. */
 PRIMA_C_API void prima_renderer_destroy(PrimaRenderer* renderer);
 

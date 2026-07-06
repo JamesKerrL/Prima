@@ -21,6 +21,12 @@ add_executable(prima_engine_tests
     dab_emitter_test.cpp
     brush_engine_test.cpp
 )
+# D3D11 links and the PRIMA_HAS_D3D11 define propagate from prima_engine's
+# PUBLIC usage requirements.
+if(PRIMA_ENABLE_D3D11)
+    target_sources(prima_engine_tests PRIVATE d3d11_renderer_test.cpp)
+endif()
+
 target_link_libraries(prima_engine_tests PRIVATE prima_engine GTest::gtest_main)
 
 include(GoogleTest)

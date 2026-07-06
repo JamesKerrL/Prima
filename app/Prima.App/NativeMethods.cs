@@ -47,6 +47,12 @@ internal static unsafe partial class NativeMethods
     internal static partial nint prima_renderer_create_software();
 
     [LibraryImport(Lib)]
+    internal static partial nint prima_renderer_create_d3d11();
+
+    [LibraryImport(Lib)]
+    internal static partial nint prima_renderer_name(nint renderer);
+
+    [LibraryImport(Lib)]
     internal static partial void prima_renderer_destroy(nint renderer);
 
     [LibraryImport(Lib)]

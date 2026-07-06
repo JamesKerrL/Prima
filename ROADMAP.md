@@ -25,7 +25,12 @@ Check off items as they land: `- [x] done thing`.
 - [x] Engine-side `Renderer` abstraction + software (CPU) backend
 - [x] `Viewport` (pan/zoom) mapping in the engine, headless-tested
 - [x] Reusable Avalonia `CanvasControl` (pan/zoom/paint) on a physical-pixel bitmap
-- [ ] GPU backend #1: OpenGL via `OpenGlControlBase` (then Vulkan/Metal)
+- [x] GPU backend #1 plumbing: Direct3D 11 device (hardware → WARP fallback),
+      behind the existing `Renderer` seam, ABI + `Renderer.CreateBest()`
+      software fallback — headless-tested via WARP
+- [ ] D3D11 GPU compositing: shader viewport sampling + zero-copy present via
+      Avalonia composition/swapchain interop; switch `CanvasControl` to
+      `CreateBest()` when it lands
 
 ## Milestone 2 — Document model & persistence
 
@@ -52,8 +57,9 @@ Check off items as they land: `- [x] done thing`.
 
 Brainstorm backlog — unprioritized, prune freely.
 
-- **Render backends:** OpenGL (`OpenGlControlBase`) → Vulkan/Metal via
-  composition-surface texture interop; zero-copy shared-texture present;
+- **Render backends:** D3D11 present path (zero-copy shared-texture via
+  Avalonia composition interop) → Vulkan/Metal for other platforms; OpenGL
+  (`OpenGlControlBase`) as a cross-platform option if ever needed;
   bilinear/high-quality sampling; checkerboard transparency; pixel grid at high
   zoom; canvas rotate/flip view.
 - **Input:** stylus pressure & tilt; stroke stabilizer/smoothing.

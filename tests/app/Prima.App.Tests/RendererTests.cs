@@ -117,4 +117,60 @@ public class RendererTests
         Assert.Throws<ObjectDisposedException>(
             () => renderer.Render(doc, new byte[2 * 2 * 4], 2, 2, 2 * 4, Viewport.Identity, Rgba.Transparent));
     }
+
+    [Fact]
+    public void SoftwareRenderer_NameIsSoftware()
+    {
+        using var renderer = Renderer.CreateSoftware();
+        Assert.Equal("software", renderer.Name);
+    }
+
+    [Fact]
+    public void CreateD3D11_ReturnsRendererOrNull_WithoutThrowing()
+    {
+        // Null is the expected outcome where D3D11 is unavailable (e.g. a
+        // non-Windows build of the native library); non-null must be a working,
+        // disposable d3d11 backend.
+        using var renderer = Renderer.CreateD3D11();
+        if (renderer is not null)
+            Assert.Equal("d3d11", renderer.Name);
+    }
+
+    [Fact]
+    public void CreateBest_AlwaysReturnsWorkingRenderer()
+    {
+        using var doc = CoordDocument(4, 4);
+        using var renderer = Renderer.CreateBest();
+
+        Assert.Contains(renderer.Name, new[] { "d3d11", "software" });
+
+        var target = new byte[4 * 4 * 4];
+        renderer.Render(doc, target, 4, 4, 4 * 4, Viewport.Identity, Rgba.Transparent);
+        Assert.Equal(255, target[3]); // canvas (0,0) alpha made it through
+    }
+
+    [Fact]
+    public void D3D11_RenderMatchesSoftware()
+    {
+        using var d3d = Renderer.CreateD3D11();
+        if (d3d is null)
+            return; // D3D11 unavailable on this machine; parity is covered where it exists.
+
+        using var doc = CoordDocument(16, 12);
+        using var brush = BrushEngine.Create();
+        brush.BeginStroke(doc, BrushParams.Default(new Rgba(200, 40, 40, 255), radius: 3f));
+        brush.AddSamples(new[] { new InputSample(3, 3), new InputSample(12, 8) });
+        brush.EndStroke();
+
+        using var sw = Renderer.CreateSoftware();
+        var bg = new Rgba(9, 8, 7, 200);
+        foreach (var vp in new[] { Viewport.Identity, new Viewport(1.25, 2.75, 2.5), new Viewport(-3, -2, 1.0) })
+        {
+            var expected = new byte[24 * 20 * 4];
+            var actual = new byte[24 * 20 * 4];
+            sw.Render(doc, expected, 24, 20, 24 * 4, vp, bg);
+            d3d.Render(doc, actual, 24, 20, 24 * 4, vp, bg);
+            Assert.Equal(expected, actual);
+        }
+    }
 }
