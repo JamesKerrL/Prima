@@ -49,6 +49,11 @@ public:
     // vanish or degenerate; the coverage stage scales sub-pixel area separately.
     static constexpr float kMinRadius = 0.3f;
 
+    // Absolute floor on the spacing step (px). Must stay well below kMinRadius
+    // so tiny brushes still overlap dabs densely enough that the shape-union
+    // coverage approximates a smooth swept stroke instead of beading.
+    static constexpr float kMinSpacingStep = 0.15f;
+
     void begin(const BrushParams& params);
 
     // Walks last->sample segments, emitting spacing-separated dabs into `out`.

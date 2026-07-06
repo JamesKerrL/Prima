@@ -9,12 +9,14 @@
 namespace prima {
 
 RectI RoundDabSource::stamp(float cx, float cy, float radius, float hardness,
-                            float flow, uint16_t* coverage, int canvasWidth,
+                            float flow, CoverageCell* coverage, int canvasWidth,
                             int canvasHeight) {
     if (radius <= 0.f) return RectI{};
 
-    // Bounding box of the dab, rounded outward to integer pixel bounds.
-    float outer = radius + 0.5f;
+    // Bounding box of the dab, rounded outward to integer pixel bounds. Must
+    // reach the same sqrt(2)/2 AA extent dabCoverage uses, or the outermost
+    // fringe pixels get cropped.
+    float outer = radius + 0.70710678f;
     int minX = static_cast<int>(std::floor(cx - outer));
     int minY = static_cast<int>(std::floor(cy - outer));
     int maxX = static_cast<int>(std::ceil(cx + outer));   // exclusive
@@ -40,8 +42,9 @@ RectI RoundDabSource::stamp(float cx, float cy, float radius, float hardness,
             float d = std::sqrt(dx * dx + dy * dy);
             float cov = dabCoverage(d, radius, hardness);
             if (cov > 0.f) {
-                int idx = rowBase + px;
-                coverage[idx] = accumulateCoverage(coverage[idx], flow, cov);
+                CoverageCell& cell = coverage[rowBase + px];
+                cell.shape = unionCoverage(cell.shape, cov);
+                cell.buildup = accumulateCoverage(cell.buildup, flow, cov);
                 if (px < touchMinX) touchMinX = px;
                 if (py < touchMinY) touchMinY = py;
                 if (px > touchMaxX) touchMaxX = px;
@@ -91,7 +94,7 @@ void BrushEngine::beginStroke(Canvas& canvas, const BrushParams& params) {
         int y1 = strokeDirty_.y + strokeDirty_.height;
         for (int py = y0; py < y1; ++py) {
             std::memset(coverage_.data() + (static_cast<std::size_t>(py) * width + x0), 0,
-                        static_cast<std::size_t>(strokeDirty_.width) * sizeof(uint16_t));
+                        static_cast<std::size_t>(strokeDirty_.width) * sizeof(CoverageCell));
         }
     }
 
@@ -158,7 +161,9 @@ void BrushEngine::recomposite(const RectI& r) {
         int rowBase = py * width;
         for (int px = x0; px < x1; ++px) {
             int idx = rowBase + px;
-            float covNorm = coverage_[idx] / 65535.f;
+            const CoverageCell& cell = coverage_[idx];
+            float covNorm =
+                resolveStrokeCoverage(cell.shape, cell.buildup) / 65535.f;
             float sa = covNorm * opacity * colorAlpha;
 
             int b = idx * 4;

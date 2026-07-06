@@ -11,17 +11,28 @@
 
 namespace prima {
 
+// One stroke-buffer pixel: `shape` is the running max of geometric dab
+// coverage (the anti-aliased union of dab shapes), `buildup` the flow-weighted
+// airbrush accumulation. Recomposite resolves them as min(buildup, shape) so
+// build-up works in interiors while AA edges can't saturate. Interleaved so
+// one pooled buffer / one clear pass serves both, touched together per stamp.
+struct CoverageCell {
+    uint16_t shape;
+    uint16_t buildup;
+};
+static_assert(sizeof(CoverageCell) == 4, "CoverageCell must pack to 4 bytes");
+
 // Produces one dab's coverage into the stroke's accumulation buffer.
 // Milestone 1 ships RoundDabSource only; stamp/image brushes implement this
 // later. One virtual call per dab (not per pixel) — negligible cost.
 class DabSource {
 public:
     virtual ~DabSource() = default;
-    // Accumulate coverage (flow-weighted, saturating) into `coverage`
-    // (canvas-sized, 16-bit fixed point) and return the canvas-clamped rect of
-    // touched pixels.
+    // Accumulate coverage (shape union + flow-weighted build-up) into
+    // `coverage` (canvas-sized) and return the canvas-clamped rect of touched
+    // pixels.
     virtual RectI stamp(float cx, float cy, float radius, float hardness,
-                        float flow, uint16_t* coverage,
+                        float flow, CoverageCell* coverage,
                         int canvasWidth, int canvasHeight) = 0;
 };
 
@@ -30,7 +41,7 @@ public:
 class RoundDabSource final : public DabSource {
 public:
     RectI stamp(float cx, float cy, float radius, float hardness, float flow,
-                uint16_t* coverage, int canvasWidth, int canvasHeight) override;
+                CoverageCell* coverage, int canvasWidth, int canvasHeight) override;
 };
 
 // Thin orchestrator: DabEmitter -> DabSource -> recomposite. Owns reusable
@@ -68,7 +79,7 @@ private:
     std::vector<uint8_t> baseline_;        // RGBA8 canvas snapshot at stroke start
     int baselineWidth_ = 0;
     int baselineHeight_ = 0;
-    std::vector<uint16_t> coverage_;       // accumulated stroke coverage
+    std::vector<CoverageCell> coverage_;   // accumulated stroke coverage
     RectI strokeDirty_{};                  // union of all dabs → lazy coverage clear
 };
 

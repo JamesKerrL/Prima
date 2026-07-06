@@ -8,16 +8,21 @@
 
 #include <gtest/gtest.h>
 
+#include "prima/brush_math.h"
 #include "prima/canvas.h"
 #include "prima/image_io.h"
 
+using prima::accumulateCoverage;
 using prima::BrushEngine;
 using prima::BrushParams;
 using prima::Canvas;
+using prima::dabCoverage;
 using prima::InputSample;
 using prima::RectI;
+using prima::resolveStrokeCoverage;
 using prima::Rgba;
 using prima::saveImagePng;
+using prima::unionCoverage;
 
 namespace {
 
@@ -423,6 +428,163 @@ TEST(BrushEngineTest, BatchingSamplesIntoMultipleAddSamplesCallsMatchesSingleCal
     EXPECT_EQ(std::memcmp(canvasA.pixels(), canvasB.pixels(), canvasA.byteSize()), 0);
 }
 
+// 8. Dual-accumulation (shape ∪ + flow build-up, resolved as min) semantics.
+
+// A single dab must be bit-identical to the pure-kernel pipeline: for one
+// stamp, shape >= buildup, so the min-resolve leaves single-dab output exactly
+// as it was before the shape cap existed.
+TEST(BrushEngineTest, SingleDabOutputUnchangedByShapeCap) {
+    for (float flow : {1.0f, 0.3f}) {
+        Canvas canvas(64, 64);
+        canvas.clear(Rgba{0, 0, 0, 0});
+
+        BrushEngine engine;
+        BrushParams p;
+        p.radius = 10;
+        p.hardness = 0.8f;
+        p.opacity = 1;
+        p.flow = flow;
+        p.color = Rgba{255, 0, 0, 255};
+
+        engine.beginStroke(canvas, p);
+        InputSample s{32.f, 32.f, 1.f};
+        engine.addSamples(&s, 1);
+        engine.endStroke();
+
+        // Edge pixel (41,32): center (41.5,32.5), d = sqrt(9.5^2 + 0.5^2)
+        // from the dab center — inside the AA band.
+        float d = std::sqrt(9.5f * 9.5f + 0.5f * 0.5f);
+        float cov = dabCoverage(d, p.radius, p.hardness);
+        ASSERT_GT(cov, 0.f);
+        ASSERT_LT(cov, 1.f);
+
+        uint16_t shape = unionCoverage(0, cov);
+        uint16_t buildup = accumulateCoverage(0, flow, cov);
+        float sa = resolveStrokeCoverage(shape, buildup) / 65535.f;
+        uint8_t expected = static_cast<uint8_t>(std::lround(sa * 255.f));
+
+        EXPECT_EQ(readPixel(canvas, 41, 32).a, expected) << "flow=" << flow;
+    }
+}
+
+// The anti-saturation regression test: a dense stroke at full flow used to
+// pile overlapping dabs' partial coverage up to ~1.0 across the whole AA
+// band, turning the edge into a hard aliased cut. The shape cap keeps each
+// edge pixel at its single-dab geometric coverage.
+TEST(BrushEngineTest, OverlappingDabsPreserveAntiAliasedEdge) {
+    Canvas canvas(64, 64);
+    canvas.clear(Rgba{0, 0, 0, 0});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 2;
+    p.hardness = 0.8f;
+    p.opacity = 1;
+    p.flow = 1;
+    p.spacing = 0.15f;  // dab every 0.6px: heavy overlap
+    p.color = Rgba{0, 0, 0, 255};
+
+    engine.beginStroke(canvas, p);
+    InputSample a{10.f, 32.f, 1.f};
+    InputSample b{50.f, 32.f, 1.f};
+    engine.addSamples(&a, 1);
+    engine.addSamples(&b, 1);
+    engine.endStroke();
+
+    // Vertical cross-section at x=30 (mid-stroke). Path runs along y=32.0, so
+    // pixel row y's center sits |y + 0.5 - 32| from the path.
+    uint8_t interior = readPixel(canvas, 30, 32).a;   // d = 0.5 -> full
+    uint8_t nearEdge = readPixel(canvas, 30, 30).a;   // d = 1.5 -> ~0.81 cov
+    uint8_t farEdge = readPixel(canvas, 30, 29).a;    // d = 2.5 -> ~0.04 cov
+    uint8_t outside = readPixel(canvas, 30, 28).a;    // d = 3.5 -> beyond AA
+
+    EXPECT_EQ(interior, 255);
+    // Before the fix this pixel saturated to ~253; the geometric coverage of
+    // a radius-2 hardness-0.8 dab at d~1.5 is ~0.81 -> ~207.
+    EXPECT_GE(nearEdge, 170);
+    EXPECT_LE(nearEdge, 235);
+    EXPECT_GT(farEdge, 0);
+    EXPECT_LE(farEdge, 40);
+    EXPECT_EQ(outside, 0);
+
+    // The cross-section must keep multiple intermediate AA levels per side.
+    int intermediate = 0;
+    for (int y = 27; y <= 37; ++y) {
+        uint8_t alpha = readPixel(canvas, 30, y).a;
+        if (alpha > 0 && alpha < 255) ++intermediate;
+    }
+    EXPECT_GE(intermediate, 4);
+}
+
+// Edge quality must not depend on how densely dabs happen to land: tighter
+// spacing means more overlapping stamps, which previously darkened the AA
+// fringe further. With the shape union it converges on the same edge alpha.
+TEST(BrushEngineTest, EdgeAlphaIndependentOfSpacing) {
+    auto strokeEdgeAlpha = [](float spacing) -> uint8_t {
+        Canvas canvas(64, 64);
+        canvas.clear(Rgba{0, 0, 0, 0});
+
+        BrushEngine engine;
+        BrushParams p;
+        p.radius = 2;
+        p.hardness = 0.8f;
+        p.opacity = 1;
+        p.flow = 1;
+        p.spacing = spacing;
+        p.color = Rgba{0, 0, 0, 255};
+
+        engine.beginStroke(canvas, p);
+        InputSample a{10.f, 32.f, 1.f};
+        InputSample b{50.f, 32.f, 1.f};
+        engine.addSamples(&a, 1);
+        engine.addSamples(&b, 1);
+        engine.endStroke();
+
+        return readPixel(canvas, 30, 30).a;  // AA-band pixel, d ~= 1.5
+    };
+
+    uint8_t sparse = strokeEdgeAlpha(0.15f);
+    uint8_t dense = strokeEdgeAlpha(0.05f);
+    EXPECT_NEAR(sparse, dense, 10);
+}
+
+// Flow build-up (airbrush) must still work where it should: stroke interiors
+// accumulate toward full alpha, while the same stroke's edge pixels stay
+// capped at their geometric coverage no matter how many dabs pass.
+TEST(BrushEngineTest, LowFlowBuildupStillWorksInInterior) {
+    Canvas canvas(64, 64);
+    canvas.clear(Rgba{0, 0, 0, 0});
+
+    BrushEngine engine;
+    BrushParams p;
+    p.radius = 4;
+    p.hardness = 0.8f;
+    p.opacity = 1;
+    p.flow = 0.25f;
+    p.spacing = 0.05f;  // dab every 0.4px: many overlapping low-flow dabs
+    p.color = Rgba{0, 0, 0, 255};
+
+    engine.beginStroke(canvas, p);
+    InputSample a{10.f, 32.f, 1.f};
+    InputSample b{54.f, 32.f, 1.f};
+    engine.addSamples(&a, 1);
+    engine.addSamples(&b, 1);
+    engine.endStroke();
+
+    // Interior (d = 0.5): shape is full there, so build-up is what shows —
+    // ~23 dabs at flow 0.25 accumulate to near-saturation.
+    uint8_t interior = readPixel(canvas, 30, 32).a;
+    EXPECT_GE(interior, 230);
+
+    // AA-band pixel (d = 3.5, cov ~0.62): enough dabs passed to build far
+    // beyond 0.62 (~0.88 before the fix -> ~224), but the shape cap holds it
+    // at its geometric coverage (~159).
+    uint8_t edge = readPixel(canvas, 30, 28).a;
+    EXPECT_GE(edge, 130);
+    EXPECT_LE(edge, 175);
+    EXPECT_LT(edge, interior);
+}
+
 // Visual output tests for inspecting brush edge quality
 TEST(BrushEngineTest, DISABLED_VisualSimpleDiagonalStroke) {
     Canvas canvas(200, 200);
@@ -539,6 +701,59 @@ TEST(BrushEngineTest, DISABLED_VisualFastZigzagStroke) {
     engine.endStroke();
 
     saveCanvasToPng(canvas, "brush_zigzag_stroke.png");
+    SUCCEED();
+}
+
+// Small-radius stroke quality: thin brushes are nearly all AA band, so edge
+// handling dominates how they look. Sparse 2-sample fast swipes and dense
+// slow paths exercise different emitter code paths (see testing policy).
+TEST(BrushEngineTest, DISABLED_VisualSmallRadiusStrokes) {
+    auto runStroke = [](float radius, float flow,
+                        const std::vector<InputSample>& samples,
+                        const char* filename) {
+        Canvas canvas(200, 200);
+        canvas.clear(Rgba{255, 255, 255, 255});
+
+        BrushEngine engine;
+        BrushParams p;
+        p.radius = radius;
+        p.hardness = 0.8f;
+        p.opacity = 1;
+        p.flow = flow;
+        p.spacing = 0.15f;
+        p.color = Rgba{0, 0, 0, 255};
+
+        engine.beginStroke(canvas, p);
+        for (const InputSample& s : samples) {
+            InputSample single = s;
+            engine.addSamples(&single, 1);
+        }
+        engine.endStroke();
+        saveCanvasToPng(canvas, filename);
+    };
+
+    // Fast swipes: only pen-down and pen-up samples.
+    std::vector<InputSample> sparseDiagonal = {
+        InputSample{20.f, 20.f, 1.f},
+        InputSample{180.f, 180.f, 1.f},
+    };
+    runStroke(1.f, 1.f, sparseDiagonal, "brush_small_r1_sparse.png");
+    runStroke(2.f, 1.f, sparseDiagonal, "brush_small_r2_sparse.png");
+
+    // Slow dense sine path: many closely-spaced raw samples.
+    std::vector<InputSample> denseSine;
+    for (int i = 0; i <= 40; ++i) {
+        float t = i / 40.f;
+        float x = 20.f + t * 160.f;
+        float y = 100.f + 40.f * std::sin(t * 3.14159f * 2.f);
+        denseSine.push_back(InputSample{x, y, 1.f});
+    }
+    runStroke(2.f, 1.f, denseSine, "brush_small_r2_dense_sine.png");
+
+    // Low-flow airbrush variant: edges must stay AA'd while the interior
+    // builds up.
+    runStroke(2.f, 0.3f, denseSine, "brush_small_r2_lowflow.png");
+
     SUCCEED();
 }
 

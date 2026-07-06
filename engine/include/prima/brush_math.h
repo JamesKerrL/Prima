@@ -67,6 +67,25 @@ inline uint16_t accumulateCoverage(uint16_t c, float flow, float cov) {
     return static_cast<uint16_t>(c + delta);
 }
 
+// Anti-aliased shape union: running max of per-dab geometric coverage. As
+// spacing shrinks this converges on the swept-stroke outline's exact coverage,
+// so AA edges survive any number of overlapping dabs. Any cov > 0 yields at
+// least 1 so touched-pixel dirty rects stay exact (same clamp as
+// accumulateCoverage).
+inline uint16_t unionCoverage(uint16_t c, float cov) {
+    int v = static_cast<int>(std::lround(cov * 65535.f));
+    if (v == 0 && cov > 0.f) v = 1;
+    if (v > 65535) v = 65535;
+    return v > c ? static_cast<uint16_t>(v) : c;
+}
+
+// Resolved per-pixel stroke coverage: flow build-up capped by the geometric
+// union of dab shapes. Interiors keep airbrush build-up; edge pixels never
+// exceed their true area coverage, so the AA fringe can't saturate.
+inline uint16_t resolveStrokeCoverage(uint16_t shape, uint16_t buildup) {
+    return buildup < shape ? buildup : shape;
+}
+
 // Straight-alpha (non-premultiplied) source-over compositing of one pixel.
 // sa is the resolved blend alpha in [0,1]; srcColor.a is ignored for alpha math.
 inline Rgba blendSourceOver(Rgba dst, Rgba srcColor, float sa) {

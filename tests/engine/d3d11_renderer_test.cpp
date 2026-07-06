@@ -81,10 +81,13 @@ TEST(D3d11RendererTest, MatchesSoftwareRendererOutput) {
     Canvas c = coordCanvas(16, 12);
     const Rgba bg{9, 8, 7, 200};
     const Viewport viewports[] = {
-        Viewport{0, 0, 1.0},      // identity
-        Viewport{1.25, 2.75, 2.5},  // fractional pan, zoom in
-        Viewport{-3, -2, 1.0},    // negative pan (background at top-left)
-        Viewport{0, 0, 0.5},      // zoom out
+        Viewport{0, 0, 1.0},        // identity (nearest)
+        Viewport{1.25, 2.75, 2.5},  // fractional pan, zoom in (bilinear)
+        Viewport{-3, -2, 1.0},      // negative pan (background at top-left)
+        Viewport{0, 0, 0.5},        // zoom out (box filter)
+        Viewport{0.4, -1.1, 1.5},   // fractional zoom in (bilinear)
+        Viewport{-0.7, 0.3, 0.3},   // deep zoom out (box filter)
+        Viewport{0, 0, 4.5},        // >= 4x stays nearest
     };
 
     for (const Viewport& vp : viewports) {

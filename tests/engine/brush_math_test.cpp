@@ -11,7 +11,9 @@ using prima::accumulateCoverage;
 using prima::blendSourceOver;
 using prima::dabCoverage;
 using prima::PressureResponse;
+using prima::resolveStrokeCoverage;
 using prima::Rgba;
+using prima::unionCoverage;
 
 namespace {
 constexpr float kTol = 1e-3f;
@@ -212,6 +214,48 @@ TEST(AccumulateCoverageTest, NeverDecreasesBelowInputC) {
         EXPECT_GE(accumulateCoverage(c, 0.f, 0.f), c);
         EXPECT_GE(accumulateCoverage(c, 0.5f, 0.5f), c);
     }
+}
+
+// ---------------------------------------------------------------------------
+// unionCoverage / resolveStrokeCoverage
+// ---------------------------------------------------------------------------
+
+TEST(UnionCoverageTest, TakesMaxOfExistingAndNewCoverage) {
+    uint16_t half = unionCoverage(0, 0.5f);
+    EXPECT_EQ(half, static_cast<uint16_t>(std::lround(0.5f * 65535.f)));
+
+    // A weaker dab over a stronger one leaves the max in place.
+    EXPECT_EQ(unionCoverage(half, 0.25f), half);
+    // A stronger dab raises it.
+    EXPECT_EQ(unionCoverage(half, 1.0f), 65535);
+}
+
+TEST(UnionCoverageTest, AnyPositiveCoverageYieldsAtLeastOne) {
+    // Keeps touched-pixel dirty rects exact, mirroring accumulateCoverage.
+    EXPECT_EQ(unionCoverage(0, 1e-7f), 1);
+    EXPECT_EQ(unionCoverage(0, 0.f), 0);
+}
+
+TEST(UnionCoverageTest, NeverDecreasesAndNeverOverflows) {
+    const uint16_t cs[] = {0, 1, 100, 32768, 65534, 65535};
+    const float covs[] = {0.f, 1e-7f, 0.3f, 0.99999f, 1.f, 2.f};
+    for (uint16_t c : cs) {
+        for (float cov : covs) {
+            uint16_t out = unionCoverage(c, cov);
+            EXPECT_GE(out, c) << "c=" << c << " cov=" << cov;
+            EXPECT_LE(out, 65535);
+        }
+    }
+}
+
+TEST(ResolveStrokeCoverageTest, TakesMinOfShapeAndBuildup) {
+    // Edge pixel: many overlapping dabs saturated buildup, but the geometric
+    // shape coverage caps the result — this is what keeps AA edges intact.
+    EXPECT_EQ(resolveStrokeCoverage(20000, 65535), 20000);
+    // Interior pixel mid-airbrush: shape is full, buildup still growing.
+    EXPECT_EQ(resolveStrokeCoverage(65535, 30000), 30000);
+    EXPECT_EQ(resolveStrokeCoverage(0, 65535), 0);
+    EXPECT_EQ(resolveStrokeCoverage(65535, 65535), 65535);
 }
 
 // ---------------------------------------------------------------------------

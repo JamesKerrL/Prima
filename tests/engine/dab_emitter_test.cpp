@@ -23,8 +23,8 @@ InputSample makeSample(float x, float y, float pressure = 1.f) {
     return s;
 }
 
-// step = max(0.5, spacing * 2 * radius) for default BrushParams (radius=12,
-// spacing=0.15) => max(0.5, 0.15*2*12) = 3.6
+// step = max(kMinSpacingStep, spacing * 2 * radius) for default BrushParams
+// (radius=12, spacing=0.15) => max(0.15, 0.15*2*12) = 3.6
 constexpr float kDefaultStep = 3.6f;
 
 }  // namespace

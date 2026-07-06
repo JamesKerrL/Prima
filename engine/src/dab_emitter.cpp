@@ -32,7 +32,7 @@ void DabEmitter::emitDab(float x, float y, float pressure,
     strokeStarted_ = true;
     // Recompute the spacing step from THIS dab's resolved radius: the interval
     // tracks the (pressure-varying) size along the stroke.
-    float step = std::max(0.5f, params_.spacing * 2.f * dab.radius);
+    float step = std::max(kMinSpacingStep, params_.spacing * 2.f * dab.radius);
     distanceToNextDab_ = step;
 }
 

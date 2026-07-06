@@ -60,8 +60,9 @@ Brainstorm backlog — unprioritized, prune freely.
 - **Render backends:** D3D11 present path (zero-copy shared-texture via
   Avalonia composition interop) → Vulkan/Metal for other platforms; OpenGL
   (`OpenGlControlBase`) as a cross-platform option if ever needed;
-  bilinear/high-quality sampling; checkerboard transparency; pixel grid at high
-  zoom; canvas rotate/flip view.
+  ~~bilinear/high-quality sampling~~ (done: box/bilinear/nearest filter policy
+  in `cpu_sampling.h`; mip/downsample cache for huge canvases still open);
+  checkerboard transparency; pixel grid at high zoom; canvas rotate/flip view.
 - **Input:** stylus pressure & tilt; stroke stabilizer/smoothing.
 - **Brush system:** textured/stamp brushes, custom brush import, per-brush blend
   modes.

@@ -205,13 +205,16 @@ public sealed class CanvasControl : Control, IDisposable
             DirtyRect dirty = _pendingDirty;
             _pendingDirty = default;
 
-            // Map canvas dirty rect to physical target rect with 1px pad for AA.
-            int tx = (int)Math.Floor((dirty.X - _viewport.PanX) * zs) - 1;
-            int ty = (int)Math.Floor((dirty.Y - _viewport.PanY) * zs) - 1;
+            // Map canvas dirty rect to physical target rect. Pad by 1 canvas
+            // pixel before mapping (a changed canvas pixel influences filtered
+            // target pixels up to 1 canvas px away under bilinear/box
+            // sampling), plus 1 target px for rounding.
+            int tx = (int)Math.Floor((dirty.X - 1 - _viewport.PanX) * zs) - 1;
+            int ty = (int)Math.Floor((dirty.Y - 1 - _viewport.PanY) * zs) - 1;
             int tx2 = (int)Math.Ceiling(
-                (dirty.X + dirty.Width - _viewport.PanX) * zs) + 1;
+                (dirty.X + dirty.Width + 1 - _viewport.PanX) * zs) + 1;
             int ty2 = (int)Math.Ceiling(
-                (dirty.Y + dirty.Height - _viewport.PanY) * zs) + 1;
+                (dirty.Y + dirty.Height + 1 - _viewport.PanY) * zs) + 1;
 
             tx = Math.Clamp(tx, 0, pw);
             ty = Math.Clamp(ty, 0, ph);

@@ -32,8 +32,10 @@ public:
     virtual const char* name() const = 0;
 };
 
-// CPU raster backend: nearest-neighbor sampling of the canvas through the
-// viewport. No external dependencies; fully headless and unit-testable.
+// CPU raster backend: filtered sampling of the canvas through the viewport
+// (box average when zoomed out, bilinear at fractional zoom-in below 4x,
+// nearest at integer zooms and >= 4x). No external dependencies; fully
+// headless and unit-testable.
 class SoftwareRenderer : public Renderer {
 public:
     void render(const Canvas& canvas, const RenderTarget& target,
