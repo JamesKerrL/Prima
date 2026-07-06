@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
 using Prima.App.Commands;
 using Prima.Desktop.Commands;
 using Xunit;
@@ -155,14 +156,37 @@ public class CommandRevealTests
         var control = target!.Locate();
         Assert.NotNull(control);
 
-        var adorner = AdornerLayer.GetAdornerLayer(control!);
-        Assert.NotNull(adorner);
+        var layer = window.FindControl<Canvas>("PART_HighlightLayer");
+        Assert.NotNull(layer);
+
+        var initialCount = layer!.Children.Count;
 
         var flashTask = ControlHighlighter.FlashAsync(control);
-        await Task.Delay(30);
-        Assert.Single(adorner!.Children);
+        // Pump the dispatcher until the highlight appears instead of relying on timing.
+        await WaitForConditionAsync(() => layer!.Children.Count > initialCount);
+        Assert.Equal(initialCount + 1, layer.Children.Count);
 
         await flashTask;
-        Assert.Empty(adorner.Children);
+        Assert.Equal(initialCount, layer.Children.Count);
+    }
+
+    private static async Task WaitForConditionAsync(Func<bool> condition, int maxWaitMs = 1000)
+    {
+        const int pollIntervalMs = 10;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        while (true)
+        {
+            // Pump the Avalonia dispatcher to process any pending work and layout changes
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Normal);
+
+            if (condition())
+                return;
+
+            if (sw.ElapsedMilliseconds > maxWaitMs)
+                throw new TimeoutException($"Condition not met within {maxWaitMs}ms");
+
+            await Task.Delay(pollIntervalMs);
+        }
     }
 }
